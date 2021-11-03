@@ -1,18 +1,11 @@
 <?php
 
-use Monolog\Handler\RotatingFileHandler;
-use Monolog\Logger;
-
 require_once "bootstrap.php";
 
-$INBOX_URL = 'http://example.org/inbox/';
-$ACCEPTED_FORMATS = array('application/ld+json', 's');
-$LOG_LEVEL = Logger::DEBUG;
+$config = include('config.php');
 
-$log = new Logger('NotifyCOARLogger');
-$handler = new RotatingFileHandler('./log/NotifyCOARLogger.log',
-    0, Logger::DEBUG, true, 0664);
-$log->pushHandler($handler);
+// See https://rhiaro.co.uk/2017/08/diy-ldn for a very basic walkthrough of an ldn-inbox
+// done by Amu Guy who wrote the spec.
 
 // TODO
 // GET/HEAD request
@@ -20,7 +13,7 @@ $log->pushHandler($handler);
 
 if($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 // See https://www.w3.org/TR/2017/REC-ldn-20170502/#sender
-    header("Accept-Post: " . implode(', ', $ACCEPTED_FORMATS));
+    header("Accept-Post: " . implode(', ', $config['accepted_formats']));
 
 
 }
@@ -30,8 +23,9 @@ else if($_SERVER['REQUEST_METHOD'] === 'POST') {
         // Could be followed by a 'profile' but that's not actioned on
         // https://datatracker.ietf.org/doc/html/rfc6906
 
-        if($LOG_LEVEL === Logger::DEBUG)
-            $log->debug('Received a ld+json POST request.');
+        $config['log']->debug('Received a ld+json POST request.');
+
+        // Validating JSON and keeping the variable
 
         $notification_json = null;
 
@@ -40,34 +34,59 @@ else if($_SERVER['REQUEST_METHOD'] === 'POST') {
                 file_get_contents('php://input'), true, 512, JSON_THROW_ON_ERROR);
         }
         catch (JsonException $exception) {
-            $log->error("Syntax error: Badly formed JSON in payload.");
+            $config['log']->error("Syntax error: Badly formed JSON in payload.");
             http_response_code(400);
             return;
 
         }
 
+        // Loading into EasyRDF, the go to rdf library for PHP
+        // an alternative would be the more lightweight and ActivityStreams-specific
+        // ActivityPhp (see https://landrok.github.io/activitypub/)
+        // EasyRDF is a full on rdf library however, and it's serialisation output
+        // is full of regressed data.
+        // EasyRDF supports a number of namespaces by default, including JSON-LD and
+        // ActivityStreams.
+
+
+        $graph = new \EasyRdf\Graph();
+        $graph->parse(file_get_contents('php://input'), 'jsonld');
+        //print_r(\EasyRdf\Format::getFormats());
+        print_r($graph->serialise('json'));
+        //print_r($graph->properties( 'as:name' ));
+        //print_r($graph->resource('as:name'));
+        //$id = array_keys($graph->resources())[0];
+        //print_r($graph->getResource($id, 'rdf:type')->dumpValue('text'));
+        //print_r($graph->getResource($id, 'as:object')->getResource('rdf:type')->dumpValue('text'));
+        //print_r($graph->get('as:name', 'uri'));
+        //print_r($graph->)
+
+
+
+
         if(!isset($notification_json['@context'])
             || !in_array("https://www.w3.org/ns/activitystreams", $notification_json['@context'])
             || !in_array("https://purl.org/coar/notify", $notification_json['@context'])) {
-            $log->error("The '@context' must include: Activity Streams 2.0 and Notify.");
+            $config['log']->error("The '@context' must include: Activity Streams 2.0 and Notify.");
             http_response_code(422);
             return;
         }
 
         $notification = null;
 
-        print_r($notification_json);
         try {
             $notification = new Notification();
-            $notification->setUid($notification_json['id'] ?? '');
-            $notification->setType($notification_json['type'] ?? '');
-            $notification->setOrigin($notification_json['origin'] ?? '');
-            $notification->setTarget($notification_json['target'] ?? '');
-            $notification->setObject($notification_json['object'] ?? '');
-            $notification->setActor($notification_json['actor'] ?? '');
+            $notification->setId(json_encode($notification_json['id']) ?? '');
+            $notification->setDirection('inbound');
+            $notification->setType(json_encode($notification_json['type']) ?? '');
+            $notification->setOrigin(json_encode($notification_json['origin']) ?? '');
+            $notification->setTarget(json_encode($notification_json['target']) ?? '');
+            $notification->setObject(json_encode($notification_json['object']) ?? '');
+            $notification->setActor(json_encode($notification_json['actor']) ?? '');
+            $notification->setOriginal(json_encode($notification_json));
         }
         catch (NotificationException $exception) {
-            $log->error($exception->getMessage());
+            $config['log']->error($exception->getMessage());
             http_response_code(422);
             return;
         }
@@ -80,11 +99,9 @@ else if($_SERVER['REQUEST_METHOD'] === 'POST') {
         catch (Exception $exception) {
             // Trouble catching PDOExceptions
             //if($exception->getCode() == 1062) {
-            $log->error($exception->getMessage());
+            $config['log']->error($exception->getMessage());
 
-            if($LOG_LEVEL === Logger::DEBUG)
-                $log->debug($exception->getTraceAsString());
-
+            $config['log']->debug($exception->getTraceAsString());
 
             http_response_code(422);
             return;
@@ -93,15 +110,19 @@ else if($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         http_response_code(201);
-        header("Location: $INBOX_URL");
+        header("Location: " . $config['inbox_url']);
+        //print_r($note);
 
 
     }
-    else if($LOG_LEVEL === Logger::DEBUG) {
-        $log->debug("Received a POST but content type is '" . $_SERVER["CONTENT_TYPE"]
-        . "' not in an accepted format.");
+    else {
+        $config['log']->debug("415 Unsupported Media Type: received a POST but content type is '"
+            . $_SERVER["CONTENT_TYPE"] . "' not an accepted format.");
+        http_response_code(415);
     }
 
 }
 
 print_r($_SERVER['REQUEST_METHOD']);
+
+

@@ -20,7 +20,7 @@ class NotificationException extends Exception {}
 interface NotificationInterface {
 
     public function getId();
-    public function setUid(string $uid);
+    //public function setUid(string $uid);
 
 }
 
@@ -36,15 +36,20 @@ class Notification implements NotificationInterface {
     private $log;
 
     /**
+     * @ ORM\Id
+     * @ ORM\Column(type="integer")
+     * @ ORM\GeneratedValue
+     */
+    // private $id;
+    /**
      * @ORM\Id
-     * @ORM\Column(type="integer")
-     * @ORM\GeneratedValue
+     * @ORM\Column(type="string", unique=true)
      */
     private $id;
     /**
-     * @ORM\Column(type="string", unique=true)
+     * @ORM\Column(type="string", nullable=false)
      */
-    private $uid;
+    private $direction;
     /**
      * @ORM\Column(type="string", nullable=false)
      */
@@ -71,6 +76,10 @@ class Notification implements NotificationInterface {
      * @ORM\Version
      */
      private $timestamp;
+    /**
+     * @ORM\Column(type="json")
+     */
+     private $original;
 
     /**
      */
@@ -91,41 +100,81 @@ class Notification implements NotificationInterface {
 
     }
 
+    /**
+     * @return mixed
+     */
+    public function getOriginal()
+    {
+        return $this->original;
+    }
+
+    /**
+     * @param mixed $original
+     */
+    public function setOriginal($original): void
+    {
+        $this->original = $original;
+    }
+
+    public function setId(string $id): void
+    {
+        $this->id = $id;
+    }
+
+    /**
+     * @return mixed
+     */
+    public function getDirection()
+    {
+        return $this->direction;
+    }
+
+    /**
+     * @param mixed $direction
+     */
+    public function setDirection($direction): void
+    {
+        $this->direction = $direction;
+    }
+
 
     /**
      * Validates $id argument passed to Notification constructor.
      * It's recommended to be URN:UUID, an HTTP URI may be used.
      * It is checked for being either UUID4 or a valid URL.
-     * @param $uid
+     * @param $id
      * @throws NotificationException
      */
-    private function validateUid($uid):void {
+    private function validateId($id):void {
         // Only condition that can be considered invalid $id
-        if($uid === "") {
+        if($id === "") {
             throw new NotificationException('UId can not be null.');
         }
-        elseif (!filter_var($uid, FILTER_VALIDATE_URL) &&
-            (preg_match('/^urn:uuid:[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/', $uid) === 0)) {
-            $this->log->warning("(UId: '$uid') Uid is neither a valid URL nor an UUID.");
+        elseif (!filter_var($id, FILTER_VALIDATE_URL) &&
+            (preg_match('/^urn:uuid:[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/', $id) === 0)) {
+            $this->log->warning("(UId: '$id') Uid is neither a valid URL nor an UUID.");
         }
 
 
     }
 
+    /**
+     * @throws NotificationException
+     */
     private function validateType($type):void {
         if($type === "")
             throw new NotificationException("Type can not be null.");
         else if(!in_array(strtolower($type), ACTIVITIES)) {
-            $this->log->warning("(UId: '" . $this->getUid() . "') Type '$type' is not an Activity Stream 2.0 Activity Type.");
+            $this->log->warning("(UId: '" . $this->getId() . "') Type '$type' is not an Activity Stream 2.0 Activity Type.");
 
         }
     }
 
     /**
      * Auto-generated SQL id.
-     * @return int
+     * @return string
      */
-    public function getId(): int
+    public function getId(): string
     {
         return $this->id;
     }
@@ -135,19 +184,19 @@ class Notification implements NotificationInterface {
      * An HTTP URI may be used, but in such cases the URI should resolve to a resource which represents the activity.
      * @return string
      */
-    public function getUid(): string
+    /*public function getUid(): string
     {
         return $this->uid;
-    }
+    }*/
 
     /**
      * @param string $uid
      */
-    public function setUid(string $uid): void
+    /*public function setUid(string $uid): void
     {
         $this->validateUid($uid);
         $this->uid = $uid;
-    }
+    }*/
 
     /**
      * This should include one of the Activity Stream 2.0 Activity Types.
@@ -187,7 +236,7 @@ class Notification implements NotificationInterface {
     public function setOrigin(string $origin): void
     {
         if($origin === "")
-            throw new NotificationException("(UId: '" . $this->getUid() . "') Origin can not be null.");
+            throw new NotificationException("(UId: '" . $this->getId() . "') Origin can not be null.");
         $this->origin = $origin;
     }
 
@@ -207,7 +256,7 @@ class Notification implements NotificationInterface {
     public function setTarget(string $target): void
     {
         if($target === "")
-            throw new NotificationException("(UId: '" . $this->getUid() . "') Target can not be null.");
+            throw new NotificationException("(UId: '" . $this->getId() . "') Target can not be null.");
         $this->target = $target;
     }
 
@@ -228,7 +277,7 @@ class Notification implements NotificationInterface {
     public function setObject(string $object): void
     {
         if($object === "")
-            throw new NotificationException("(UId: '" . $this->getUid() . "') Object can not be null.");
+            throw new NotificationException("(UId: '" . $this->getId() . "') Object can not be null.");
         $this->object = $object;
     }
 
