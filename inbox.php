@@ -26,6 +26,10 @@ else if($_SERVER['REQUEST_METHOD'] === 'POST') {
         $config['log']->debug('Received a ld+json POST request.');
 
         // Validating JSON and keeping the variable
+        // Alternative is to load into EasyRDF, the go to rdf library for PHP,
+        // or the more lightweight and ActivityStreams-specific ActivityPhp
+        // This is a computationally expensive operation that should be done
+        // at a later stage.
 
         $notification_json = null;
 
@@ -39,30 +43,6 @@ else if($_SERVER['REQUEST_METHOD'] === 'POST') {
             return;
 
         }
-
-        // Loading into EasyRDF, the go to rdf library for PHP
-        // an alternative would be the more lightweight and ActivityStreams-specific
-        // ActivityPhp (see https://landrok.github.io/activitypub/)
-        // EasyRDF is a full on rdf library however, and it's serialisation output
-        // is full of regressed data.
-        // EasyRDF supports a number of namespaces by default, including JSON-LD and
-        // ActivityStreams.
-
-
-        $graph = new \EasyRdf\Graph();
-        $graph->parse(file_get_contents('php://input'), 'jsonld');
-        //print_r(\EasyRdf\Format::getFormats());
-        print_r($graph->serialise('json'));
-        //print_r($graph->properties( 'as:name' ));
-        //print_r($graph->resource('as:name'));
-        //$id = array_keys($graph->resources())[0];
-        //print_r($graph->getResource($id, 'rdf:type')->dumpValue('text'));
-        //print_r($graph->getResource($id, 'as:object')->getResource('rdf:type')->dumpValue('text'));
-        //print_r($graph->get('as:name', 'uri'));
-        //print_r($graph->)
-
-
-
 
         if(!isset($notification_json['@context'])
             || !in_array("https://www.w3.org/ns/activitystreams", $notification_json['@context'])
@@ -100,7 +80,6 @@ else if($_SERVER['REQUEST_METHOD'] === 'POST') {
             // Trouble catching PDOExceptions
             //if($exception->getCode() == 1062) {
             $config['log']->error($exception->getMessage());
-
             $config['log']->debug($exception->getTraceAsString());
 
             http_response_code(422);
@@ -111,8 +90,6 @@ else if($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         http_response_code(201);
         header("Location: " . $config['inbox_url']);
-        //print_r($note);
-
 
     }
     else {
@@ -122,7 +99,5 @@ else if($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
 }
-
-print_r($_SERVER['REQUEST_METHOD']);
 
 

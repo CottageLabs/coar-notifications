@@ -50,7 +50,8 @@ class Notification implements NotificationInterface {
      * @ORM\Column(type="string", nullable=false)
      */
     private $direction;
-    /**
+    /**    "easyrdf/easyrdf": "1.1.1",
+    "ml/json-ld": "~1.0"
      * @ORM\Column(type="string", nullable=false)
      */
     private $type;

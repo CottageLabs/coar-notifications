@@ -13,9 +13,7 @@
     "monolog/monolog": "^1.26",
     "symfony/cache": "^5.3",
     "ext-pdo": "*",
-    "ext-json": "*",
-    "easyrdf/easyrdf": "1.1.1",
-    "ml/json-ld": "~1.0"
+    "ext-json": "*"
   },
   "autoload": {
     "psr-0": {"": "src/"}
