@@ -1,20 +1,50 @@
 <?php
 
 require_once "bootstrap.php";
+require_once 'src/NotificationException.php';
 
 $config = include('config.php');
 
 // See https://rhiaro.co.uk/2017/08/diy-ldn for a very basic walkthrough of an ldn-inbox
 // done by Amu Guy who wrote the spec.
 
-// TODO
-// GET/HEAD request
-// https://www.w3.org/TR/2017/REC-ldn-20170502/#discovery
 
-if($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+
+/**
+ * TODO, cater for either http or https?
+ *
+ * @throws NotificationException
+ */
+function validate_notification($notification_json) {
+    // Validating that @context has ActivityStreams and Coar notify namespaces.
+    if(!isset($notification_json['@context'])
+        || !in_array("https://www.w3.org/ns/activitystreams", $notification_json['@context'])
+        || !in_array("http://purl.org/coar/notify", $notification_json['@context'])) {
+        //print_r($notification_json['@context']);
+        throw new NotificationException("The '@context' must include: Activity Streams 2.0 and Notify.");
+    }
+
+    // Validating that id must not be empty
+    $mandatory_properties = ['id'];
+
+    foreach($mandatory_properties as $mandatory_property) {
+        if($notification_json[$mandatory_property] === '') {
+            throw new NotificationException("$mandatory_property is empty.");
+        }
+
+    }
+}
+
+
+if($_SERVER['REQUEST_METHOD'] === 'GET') {
+    http_response_code(403);
+    return;
+
+}
+else if($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 // See https://www.w3.org/TR/2017/REC-ldn-20170502/#sender
+    header("Allow: " . implode(', ', ['POST', 'OPTIONS']));
     header("Accept-Post: " . implode(', ', $config['accepted_formats']));
-
 
 }
 else if($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -35,29 +65,35 @@ else if($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         try {
             $notification_json = json_decode(
-                file_get_contents('php://input'), true, 512, JSON_THROW_ON_ERROR);
+                file_get_contents('php://input'),true,512,
+                JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES);
+            //print_r($notification_json);
         }
         catch (JsonException $exception) {
             $config['log']->error("Syntax error: Badly formed JSON in payload.");
+            $config['log']->debug($exception->getTraceAsString());
             http_response_code(400);
             return;
 
         }
 
-        if(!isset($notification_json['@context'])
-            || !in_array("https://www.w3.org/ns/activitystreams", $notification_json['@context'])
-            || !in_array("https://purl.org/coar/notify", $notification_json['@context'])) {
-            $config['log']->error("The '@context' must include: Activity Streams 2.0 and Notify.");
+        try {
+            validate_notification($notification_json);
+        }
+        catch (NotificationException $exception) {
+            $config['log']->error("Invalid notification: " . $exception->getMessage());
+            $config['log']->debug($exception->getTraceAsString());
+            $config['log']->debug((print_r($notification_json, true)));
             http_response_code(422);
             return;
         }
 
         $notification = null;
 
+        // Creating an inbound ORM object
         try {
             $notification = new Notification();
             $notification->setId(json_encode($notification_json['id']) ?? '');
-            $notification->setDirection('inbound');
             $notification->setType(json_encode($notification_json['type']) ?? '');
             $notification->setOrigin(json_encode($notification_json['origin']) ?? '');
             $notification->setTarget(json_encode($notification_json['target']) ?? '');
@@ -72,6 +108,7 @@ else if($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
 
+        // Committing to database
         try {
             $entityManager->persist($notification);
             $entityManager->flush();
@@ -88,8 +125,8 @@ else if($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         }
 
+        //header("Location: " . $config['inbox_url']);
         http_response_code(201);
-        header("Location: " . $config['inbox_url']);
 
     }
     else {

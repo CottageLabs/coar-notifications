@@ -4,6 +4,7 @@ use Doctrine\ORM\Mapping as ORM;
 use Monolog\Handler\RotatingFileHandler;
 use Monolog\Logger;
 
+require_once 'NotificationException.php';
 //namespace cottagelabs/php-coar-notifications;
 
 // Not exhaustive
@@ -14,26 +15,19 @@ const ACTIVITIES = array('accept', 'add', 'announce', 'arrive', 'block', 'create
     'follow', 'ignore', 'invite', 'join', 'leave', 'like', 'listen', 'move', 'offer', 'question', 'reject', 'read',
     'remove', 'tentativereject', 'tentativeaccept', 'travel', 'undo', 'update', 'view');
 
-class NotificationException extends Exception {}
-
-
-interface NotificationInterface {
-
-    public function getId();
-    //public function setUid(string $uid);
-
-}
-
 
 /**
  * @author Hrafn Malmquist - Cottage Labs - hrafn@cottagelabs.com
  * @ORM\Entity
+ * @ORM\InheritanceType("SINGLE_TABLE")
+ * @ORM\DiscriminatorColumn(name="direction", type="string")
+ * @ORM\DiscriminatorMap({"INBOUND" = "Notification", "OUTBOUND" = "OutboundNotification"})
  * @ORM\Table(name="notifications")
  */
-class Notification implements NotificationInterface {
+class Notification {
 
     // create a log channel
-    private $log;
+    private Logger $log;
 
     /**
      * @ ORM\Id
@@ -46,12 +40,8 @@ class Notification implements NotificationInterface {
      * @ORM\Column(type="string", unique=true)
      */
     private $id;
+
     /**
-     * @ORM\Column(type="string", nullable=false)
-     */
-    private $direction;
-    /**    "easyrdf/easyrdf": "1.1.1",
-    "ml/json-ld": "~1.0"
      * @ORM\Column(type="string", nullable=false)
      */
     private $type;
@@ -91,14 +81,6 @@ class Notification implements NotificationInterface {
             0, Logger::DEBUG, true, 0664);
         $this->log->pushHandler($handler);
 
-        /*$this->setUid($uid);
-        $this->setType($type);
-        $this->setOrigin($origin);
-        $this->setTarget($target);
-        $this->setObject($object);
-        $this->setOrigin($origin);
-        $this->setActor($actor);*/
-
     }
 
     /**
@@ -121,23 +103,6 @@ class Notification implements NotificationInterface {
     {
         $this->id = $id;
     }
-
-    /**
-     * @return mixed
-     */
-    public function getDirection()
-    {
-        return $this->direction;
-    }
-
-    /**
-     * @param mixed $direction
-     */
-    public function setDirection($direction): void
-    {
-        $this->direction = $direction;
-    }
-
 
     /**
      * Validates $id argument passed to Notification constructor.
@@ -254,7 +219,7 @@ class Notification implements NotificationInterface {
      * @param string $target
      * @throws NotificationException
      */
-    public function setTarget(string $target): void
+    public function setTarget(string $target, string $targetInbox = null): void
     {
         if($target === "")
             throw new NotificationException("(UId: '" . $this->getId() . "') Target can not be null.");
