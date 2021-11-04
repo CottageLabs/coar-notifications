@@ -90,7 +90,7 @@ class OutboundNotification extends Notification {
             'http' => array(
                 'header'  => "Content-type: application/ld+json\r\n",
                 'method'  => 'POST',
-                'content' => json_encode($this->base, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE)
+                'content' => json_encode($this->base)
             )
         );
         $context  = stream_context_create($options);
