@@ -1,9 +1,10 @@
 <?php
 
-require_once "../bootstrap.php";
-require_once 'NotificationException.php';
+require_once __DIR__ . "/../bootstrap.php";
+require_once __DIR__ . '/../orm/Notification.php';
+require_once __DIR__ . '/../orm/NotificationException.php';
 
-$config = include('../config.php');
+$config = include(__DIR__ . '/../config.php');
 
 // See https://rhiaro.co.uk/2017/08/diy-ldn for a very basic walkthrough of an ldn-inbox
 // done by Amu Guy who wrote the spec.
@@ -95,10 +96,6 @@ else if($_SERVER['REQUEST_METHOD'] === 'POST') {
             $notification = new Notification();
             $notification->setId(json_encode($notification_json['id']) ?? '');
             $notification->setType(json_encode($notification_json['type']) ?? '');
-            $notification->setOrigin(json_encode($notification_json['origin']) ?? '');
-            $notification->setTarget(json_encode($notification_json['target']) ?? '');
-            $notification->setObject(json_encode($notification_json['object']) ?? '');
-            $notification->setActor(json_encode($notification_json['actor']) ?? '');
             $notification->setOriginal(json_encode($notification_json));
         }
         catch (NotificationException $exception) {

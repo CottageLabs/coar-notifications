@@ -10,7 +10,7 @@ $isDevMode = true;
 $proxyDir = null;
 $cache = null;
 $useSimpleAnnotationReader = false;
-$config = Setup::createAnnotationMetadataConfiguration(array(__DIR__."/src"),
+$config = Setup::createAnnotationMetadataConfiguration(array(__DIR__."/orm"),
     $isDevMode, $proxyDir, $cache, $useSimpleAnnotationReader);
 
 

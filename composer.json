@@ -14,7 +14,8 @@
     "symfony/cache": "^5.3",
     "ext-pdo": "*",
     "ext-json": "*",
-    "ramsey/uuid": "^4.2"
+    "ramsey/uuid": "^4.2",
+    "ext-curl": "*"
   },
   "autoload": {
     "psr-0": {"": "src/"}

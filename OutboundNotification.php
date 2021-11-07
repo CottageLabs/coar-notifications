@@ -4,13 +4,17 @@
 use Doctrine\ORM\Mapping as ORM;
 use Ramsey\Uuid\Uuid;
 
+require_once __DIR__ . "/../bootstrap.php";
+require_once 'Notification.php';
 require_once 'NotificationException.php';
-$config = include('config.php');
+$config = include(__DIR__ . '/../config.php');
 
 /**
  * @ORM\Entity
  * @ORM\Table(name="notifications")
  */
+
+
 class OutboundNotification extends Notification {
 
     private object $base;
@@ -24,7 +28,7 @@ class OutboundNotification extends Notification {
         $this->base->id = "urn:uuid:" . Uuid::uuid4()->serialize();
         // Context
         $this->base->context = new stdClass();
-        $this->base->context->url = new stdClass();
+
         // Object
         $this->base->object = new stdClass();
         // Origin
@@ -59,20 +63,22 @@ class OutboundNotification extends Notification {
     }*/
 
     /**
-     * Implements step 1 of scenario 1
-     * https://notify.coar-repositories.org/scenarios/1/
+     * Implements step 3 of scenario 1
+     * https://notify.coar-repositories.org/scenarios/1/3/
      * @return string
      */
-    public function announce_review(string $articleId, string $articleCite,
-                                    string $reviewId, string $reviewCite,
-                                    string $targetId, string $targetInbox) {
+    public function announceReview(string $articleId, string $articleCite,
+                                    string $reviewId, string $reviewCite, array $reviewType,
+                                    string $targetId, string $targetInbox): void {
         global $config;
+        $this->setId($this->base->id);
         // Object
-        $this->base->object->type = ["Document", "sorg:Review"];
+        $this->base->object->type = $reviewType;
         $this->base->object->id = $reviewId;
         $this->base->object->{'ietf:cite-as'} = $reviewCite;
 
         $this->base->type = ["Announce", "coar-notify:ReviewAction"];
+        $this->setType(json_encode($this->base->type));
         // Context
         $this->base->context->id = $articleId;
         $this->base->context->{'ietf:cite-as'} = $articleCite;
@@ -81,16 +87,52 @@ class OutboundNotification extends Notification {
         $this->base->target->id = $targetId;
         $this->base->target->inbox = $targetInbox;
 
-        //print_r('<pre>' . json_encode($this->base, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) . '</pre>');
+        $this->setOriginal(json_encode($this->base));
         $this->send();
     }
 
-    public function send() {
+    public function announceEndorsement(string $articleId, string $articleCite,
+                                   string $reviewId, string $reviewCite, array $reviewType,
+                                   string $targetId, string $targetInbox): void {
+        global $config;
+        $this->setId($this->base->id);
+        // Object
+        $this->base->object->type = $reviewType;
+        $this->base->object->id = $reviewId;
+        $this->base->object->{'ietf:cite-as'} = $reviewCite;
+
+        $this->base->type = ["Announce", "coar-notify:EndorsementAction"];
+        $this->setType(json_encode($this->base->type));
+        // Context
+        $this->base->context->id = $articleId;
+        $this->base->context->{'ietf:cite-as'} = $articleCite;
+        $this->base->context->url = new stdClass();
+        $this->base->context->url->type =  ["Article", "sorg:ScholarlyArticle"];
+        // Target
+        $this->base->target->id = $targetId;
+        $this->base->target->inbox = $targetInbox;
+
+        $this->setOriginal(json_encode($this->base));
+        //$this->send();
+    }
+
+    /**
+     * todo Handle send HTTP errors
+     */
+    public function send(): void {
+
+        // create curl resource
+        $ch = curl_init();
+
+        // set url
+        curl_setopt($ch, CURLOPT_URL, "example.com");
+
         $options = array(
             'http' => array(
                 'header'  => "Content-type: application/ld+json\r\n",
                 'method'  => 'POST',
-                'content' => json_encode($this->base)
+                'content' => json_encode($this->base),
+                'timeout' => 5,
             )
         );
         $context  = stream_context_create($options);
