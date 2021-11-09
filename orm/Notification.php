@@ -5,6 +5,7 @@ use Monolog\Logger;
 use Ramsey\Uuid\Uuid;
 
 require_once 'NotificationException.php';
+require_once __DIR__ . "/../src/objects.php";
 //namespace cottagelabs/php-coar-notifications;
 
 $config = include(__DIR__ . '/../config.php');
@@ -16,6 +17,8 @@ $config = include(__DIR__ . '/../config.php');
 const ACTIVITIES = array('accept', 'add', 'announce', 'arrive', 'block', 'create', 'delete', 'dislike', 'flag',
     'follow', 'ignore', 'invite', 'join', 'leave', 'like', 'listen', 'move', 'offer', 'question', 'reject', 'read',
     'remove', 'tentativereject', 'tentativeaccept', 'travel', 'undo', 'update', 'view');
+
+
 
 
 /**
@@ -41,12 +44,17 @@ class Notification {
      * @ORM\Id
      * @ORM\Column(type="string", unique=true)
      */
-    private $id;
+    private string $id;
+
+    /**
+     * @ORM\Column(type="string")
+     */
+    private string $inReplyToId;
 
     /**
      * @ORM\Column(type="string", nullable=false)
      */
-    private $type;
+    private string $type;
 
     /**
      * @ORM\Column(type="integer")
@@ -118,6 +126,22 @@ class Notification {
     public function setStatus($status): void
     {
         $this->status = $status;
+    }
+
+    /**
+     * @return mixed
+     */
+    public function getInReplyToId()
+    {
+        return $this->inReplyToId;
+    }
+
+    /**
+     * @param mixed $inReplyToId
+     */
+    public function setInReplyToId($inReplyToId): void
+    {
+        $this->inReplyToId = $inReplyToId;
     }
 
     /**
@@ -226,35 +250,80 @@ class OutboundNotification extends Notification {
         $this->log = $config['log'];
         $this->base = new stdClass();
         $this->base->{'@context'} = ["https://www.w3.org/ns/activitystreams", "http://purl.org/coar/notify"];
+
+        // Actor
+        $this->base->actor = new stdClass();
+
         // Context
         $this->base->context = new stdClass();
 
         // Object
         $this->base->object = new stdClass();
+
         // Origin
         $this->base->origin = new stdClass();
         $this->base->origin->type = ["Service"];
         $this->base->origin->id = $config['id'];
         $this->base->origin->inbox = $config['inbox_url'];
+
         // Target
         $this->base->target = new stdClass();
         $this->base->target->type = ["Service"];
+
         // Context
         $this->base->context = new stdClass();
         $this->base->context->type = "sorg:AboutPage";
 
     }
 
+    public function setGenericProperties(COARActor $cActor, COARObject $cObject,
+                                         COARContext $cContext, COARTarget $cTarget) {
+        $this->setId();
+        $this->base->id = $this->getId();
+
+        $this->base->actor = $cActor;
+
+        // Object with a special character property name
+        $this->base->object->type = $cObject->getType();
+        $this->base->object->id = $cObject->getId();
+        $this->base->object->{'ietf:cite-as'} = $cObject->getIetfCiteAs();
+
+        // Context and child URL object both with special character property name
+        $this->base->context->id = $cContext->getId();
+        $this->base->context->{'ietf:cite-as'} = $cContext->getIetfCiteAs();
+        $this->base->context->url = new stdClass();
+        $this->base->context->url->id = $cContext->getUrl()->getId();
+        $this->base->context->url->{"media-type"} = $cContext->getUrl()->getMediaType();
+        $this->base->context->url->type =  $cContext->getUrl()->getType();
+
+        $this->base->target = $cTarget;
+
+    }
+
     /**
+     * Author requests review with possible endorsement (via overlay journal)
      * Implements step 3 of scenario 1
      * https://notify.coar-repositories.org/scenarios/1/3/
      * @return string
      */
-    public function announceReview(string $articleId, string $articleCite,
+    public function announceReview(string $actorId, string $actorName, string $actorType,
+                                   string $articleId, string $articleCite,
                                    string $reviewId, string $reviewCite, array $reviewType,
-                                   string $targetId, string $targetInbox): void {
-        $this->setId();
-        $this->base->id = $this->getId();
+                                   string $targetId, string $targetInbox, string $inReplyTo = null): array {
+        $this->setGenericProperties();
+
+        // Special case of step 4 scenario 2
+        // https://notify.coar-repositories.org/scenarios/2/4/
+        if(!empty($inReplyTo)) {
+            $this->base->inReplyTo = $inReplyTo;
+            $this->setInReplyToId($inReplyTo);
+        }
+
+        // Actor
+        $this->base->actor->id = $actorId;
+        $this->base->actor->name = $actorName;
+        $this->base->actor->type = $actorType;
+
         // Object
         $this->base->object->type = $reviewType;
         $this->base->object->id = $reviewId;
@@ -271,25 +340,79 @@ class OutboundNotification extends Notification {
         $this->base->target->inbox = $targetInbox;
 
         $this->setOriginal(json_encode($this->base));
-        //$this->send();
+        return $this->send();
     }
 
-    public function announceEndorsement(string $articleId, string $articleCite,
-                                        string $reviewId, string $reviewCite, array $reviewType,
-                                        string $targetId, string $targetInbox): array {
-        $this->setId();
-        $this->base->id = $this->getId();
+    // scenarios 1, 2, 3, 4 and 9,
+
+    /**
+     * Author requests review with possible endorsement (via overlay journal)
+     * Implements step 3 of scenario 1
+     * https://notify.coar-repositories.org/scenarios/1/5/
+     * @param string $articleId
+     * @param string $articleCite
+     * @param string $reviewId
+     * @param string $reviewCite
+     * @param array $reviewType
+     * @param string $targetId
+     * @param string $targetInbox
+     * @return array
+     * @throws NotificationException
+     */
+    public function announceEndorsement(COARActor $cActor, COARContext $cContext, COARObject $cObject,
+                                        COARTarget $cTarget, $inReplyTo = null): array {
+        $this->setGenericProperties($cActor, $cObject, $cContext, $cTarget);
+
+        // Special case of step 6 scenario 2
+        // https://notify.coar-repositories.org/scenarios/2/4/
+        if(!empty($inReplyTo)) {
+            $this->base->inReplyTo = $inReplyTo;
+            $this->setInReplyToId($inReplyTo);
+        }
+
+        $this->base->type = ["Announce", "coar-notify:EndorsementAction"];
+        $this->setType(json_encode($this->base->type));
+
+        $this->setOriginal(json_encode($this->base));
+        return $this->send();
+    }
+
+
+    /**
+     * Author requests review with possible endorsement (via repository)
+     * Implements step 3 of scenario 2
+     * https://notify.coar-repositories.org/scenarios/2/2/
+     * @param string $actorId
+     * @param string $actorName
+     * @param string $articleId
+     * @param string $articleCite
+     * @param string $reviewId
+     * @param string $reviewCite
+     * @param array $reviewType
+     * @param string $targetId
+     * @param string $targetInbox
+     * @throws NotificationException
+     */
+    public function requestReview(string $actorId, string $actorName,
+                                  string $articleId, string $articleCite,
+                                  string $reviewId, string $reviewCite, array $reviewType,
+                                  string $targetId, string $targetInbox): array {
+        $this->setGenericProperties();
+
+        // Actor
+        $this->base->actor->id = $actorId;
+        $this->base->actor->name = $actorName;
+        $this->base->actor->type = "Person";
         // Object
         $this->base->object->type = $reviewType;
         $this->base->object->id = $reviewId;
         $this->base->object->{'ietf:cite-as'} = $reviewCite;
 
-        $this->base->type = ["Announce", "coar-notify:EndorsementAction"];
+        $this->base->type = ["Offer", "coar-notify:ReviewAction"];
         $this->setType(json_encode($this->base->type));
         // Context
         $this->base->context->id = $articleId;
         $this->base->context->{'ietf:cite-as'} = $articleCite;
-        $this->base->context->url = new stdClass();
         $this->base->context->url->type =  ["Article", "sorg:ScholarlyArticle"];
         // Target
         $this->base->target->id = $targetId;
@@ -313,7 +436,7 @@ class OutboundNotification extends Notification {
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, $config['connect_timeout']);
         //curl_setopt($ch, CURLOPT_TIMEOUT, 5); //timeout in seconds
-        curl_setopt($ch, CURLOPT_URL, $this->base->target->inbox);
+        curl_setopt($ch, CURLOPT_URL, $this->base->target->getInbox());
         curl_setopt($ch, CURLOPT_USERAGENT, $config['user_agent']);
         curl_setopt($ch, CURLOPT_POST, 1);
         curl_setopt($ch, CURLOPT_HTTPHEADER, array('Content-Type:application/ld+json'));
@@ -339,7 +462,7 @@ class OutboundNotification extends Notification {
 
         $this->setStatus($httpcode);
 
-        $this->log->info($this->base->target->inbox);
+        $this->log->info($this->base->target->getInbox());
         $this->log->info($httpcode);
         $this->log->info(print_r($headers, true));
         $this->log->info($result);

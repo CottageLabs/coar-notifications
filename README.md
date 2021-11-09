@@ -13,9 +13,19 @@ CNs do not have a final specification, but there are
 
 ## Setup
 There are a couple of configuration variables in `config.php`:
+* `id` = the system's URL
 * `inbox_url` = the inbox's URL
 * `accepted_formats` = accepted mime-type formats, set to 'application/ld+json' by default
 * `log_level` = log level as a Monolog constant (see [here](https://github.com/Seldaek/monolog/blob/main/doc/01-usage.md]))
+* `connect_timeout` = 
+* `user_agent` = 
 
 ## License
 TODO
+
+## TODO
+* Set up as a Composer package
+* How Symfonised does this have to be?
+* Asynchronous processing required?
+* Does notification ID need to be unique?
+* What PSR needs to be set?
