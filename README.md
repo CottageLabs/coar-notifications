@@ -17,7 +17,7 @@ Easiest way to install is to use Composer.
 
 To set up test the inbox you only need to have a running MySQL/MariaDB database the config for which is in `bootstrap.php`.
 
-Then run: `$ php vendor/bin/doctrine orm:schema-tool:create` to create the database schema.
+Create the database in MySQL/MariaDB (by default `coar_inbox`) and then run: `$ php vendor/bin/doctrine orm:schema-tool:create` to create the database schema.
 Finally run a web server, For instance: `$ php -S localhost:8080 `
 
 
@@ -33,6 +33,8 @@ There are a few of configuration variables in `config.php`:
 | `connect_timeout`  | for how long the client attempts to post a notification         | 5         |
 | `user_agent`       | the client's user agent used to identify the client         | 'PHP Coar Notification Client'        |
 
+The inbox is now live and will receive COAR Notifications.
+
 ### Sending
 In order to send notifications (see example in `src/outbox.php`) you need to include the following in the file's header: 
 
@@ -42,9 +44,8 @@ require_once __DIR__ . "/../orm/COARNotification.php";
 $config = include(__DIR__ . '/../config.php');
 ```
 before creating an OutboundNotification object:
-```
-$notification = new OutboundCOARNotification();
 
+```
 $actor = new COARNotificationActor("actorId", "actorName", "Person");
 
 $object = new COARNotificationObject("https://overlay-journal.com/reviews/000001/00001",
@@ -60,9 +61,21 @@ $context = new COARNotificationContext("https://research-organisation.org/reposi
 
 $target = new COARNotificationTarget("https://research-organisation.org/repository",
 "http://localhost:81/post");
+
+$notification = new OutboundCOARNotification($actor, $object, $context, $target);
 ```
 
-These 5 variables constitute a COAR Notification. They are not passed to the constructor 
+This constitutions an almost fully formed COAR Notification, only this left is to call one of the following:
+
+`$notification->announceEndorsement();`
+
+`$notification->announceReview()`
+
+both of which have the optional `$inReplyTo` parameter, or:
+
+`$notification->requestReview()`
+
+All three methods return an array containing the http response code as well as body.
 
 ## License
 TODO
@@ -74,3 +87,5 @@ TODO
 * Does notification ID need to be unique?
 * What PSR needs to be set?
 * Namespace issues?
+* Respond to HEAD request (https://www.w3.org/TR/2017/REC-ldn-20170502/)
+* More specific exceptions?

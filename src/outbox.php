@@ -6,7 +6,7 @@ require_once __DIR__ . "/../orm/COARNotification.php";
 $config = include(__DIR__ . '/../config.php');
 
 
-$notification = new OutboundCOARNotification();
+
 
 $cNActor = new COARNotificationActor("actorId", "actorName", "Person");
 
@@ -26,8 +26,9 @@ $cTarget = new COARNotificationTarget("https://research-organisation.org/reposit
 //"http://localhost:8080/src/inbox.php"
 //http://localhost:81/post
 
-$t = $notification->announceEndorsement($cNActor, $cContext,  $cObject,  $cTarget);
+$notification = new OutboundCOARNotification($cNActor, $cObject, $cContext, $cTarget);
 
+$t = $notification->announceEndorsement();
 
 print_r($t);
 

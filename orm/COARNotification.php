@@ -128,9 +128,9 @@ class COARNotification {
     }
 
     /**
-     * @return mixed
+     * @return string
      */
-    public function getInReplyToId()
+    public function getInReplyToId(): string
     {
         return $this->inReplyToId;
     }
@@ -242,10 +242,12 @@ class OutboundCOARNotification extends COARNotification {
     private object $base;
     private Logger $log;
 
-    public function __construct()
+    public function __construct(COARNotificationActor $cActor, COARNotificationObject $cObject,
+                                COARNotificationContext $cContext, COARNotificationTarget $cTarget)
     {
         global $config;
         parent::__construct();
+
         $this->log = $config['log'];
         $this->base = new stdClass();
         $this->base->{'@context'} = ["https://www.w3.org/ns/activitystreams", "http://purl.org/coar/notify"];
@@ -258,13 +260,6 @@ class OutboundCOARNotification extends COARNotification {
 
         $this->base->actor = new stdClass();
 
-    }
-
-    /**
-     * @throws COARNotificationException
-     */
-    public function setGenericProperties(COARNotificationActor $cActor, COARNotificationObject $cObject,
-                                         COARNotificationContext $cContext, COARNotificationTarget $cTarget) {
         $this->setId();
         $this->base->id = $this->getId();
 
@@ -299,17 +294,11 @@ class OutboundCOARNotification extends COARNotification {
      * Author requests review with possible endorsement (via overlay journal)
      * Implements step 3 of scenario 1
      * https://notify.coar-repositories.org/scenarios/1/3/
-     * @param COARNotificationActor $cActor
-     * @param COARNotificationContext $cContext
-     * @param COARNotificationObject $cObject
-     * @param COARNotificationTarget $cTarget
      * @param null $inReplyTo
      * @return array
      * @throws COARNotificationException
      */
-    public function announceReview(COARNotificationActor  $cActor, COARNotificationContext $cContext,
-                                   COARNotificationObject $cObject, COARNotificationTarget $cTarget,
-                                   $inReplyTo = null): array {
+    public function announceReview($inReplyTo = null): array {
 
         // Special case of step 4 scenario 2
         // https://notify.coar-repositories.org/scenarios/2/4/
@@ -319,8 +308,7 @@ class OutboundCOARNotification extends COARNotification {
         }
 
         $this->base->type = ["Announce", "coar-notify:ReviewAction"];
-
-        $this->setGenericProperties($cActor, $cObject, $cContext, $cTarget);
+        $this->setType(json_encode($this->base->type));
 
         return $this->send();
     }
@@ -331,17 +319,11 @@ class OutboundCOARNotification extends COARNotification {
      * Author requests review with possible endorsement (via overlay journal)
      * Implements step 3 of scenario 1
      * https://notify.coar-repositories.org/scenarios/1/5/
-     * @param COARNotificationActor $cActor
-     * @param COARNotificationContext $cContext
-     * @param COARNotificationObject $cObject
-     * @param COARNotificationTarget $cTarget
      * @param null $inReplyTo
      * @return array
      * @throws COARNotificationException
      */
-    public function announceEndorsement(COARNotificationActor  $cActor, COARNotificationContext $cContext,
-                                        COARNotificationObject $cObject, COARNotificationTarget $cTarget,
-                                        $inReplyTo = null): array {
+    public function announceEndorsement($inReplyTo = null): array {
         // Special case of step 6 scenario 2
         // https://notify.coar-repositories.org/scenarios/2/4/
         if(!empty($inReplyTo)) {
@@ -350,8 +332,7 @@ class OutboundCOARNotification extends COARNotification {
         }
 
         $this->base->type = ["Announce", "coar-notify:EndorsementAction"];
-
-        $this->setGenericProperties($cActor, $cObject, $cContext, $cTarget);
+        $this->setType(json_encode($this->base->type));
 
         return $this->send();
     }
@@ -361,17 +342,12 @@ class OutboundCOARNotification extends COARNotification {
      * Author requests review with possible endorsement (via repository)
      * Implements step 3 of scenario 2
      * https://notify.coar-repositories.org/scenarios/2/2/
-     * @param COARNotificationActor $cActor
-     * @param COARNotificationContext $cContext
-     * @param COARNotificationObject $cObject
-     * @param COARNotificationTarget $cTarget
      * @return array
      * @throws COARNotificationException
      */
-    public function requestReview(COARNotificationActor  $cActor, COARNotificationContext $cContext,
-                                  COARNotificationObject $cObject, COARNotificationTarget $cTarget): array {
+    public function requestReview(): array {
         $this->base->type = ["Offer", "coar-notify:ReviewAction"];
-        $this->setGenericProperties($cActor, $cObject, $cContext, $cTarget);
+        $this->setType(json_encode($this->base->type));
 
         return $this->send();
     }
