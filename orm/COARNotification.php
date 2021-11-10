@@ -4,9 +4,8 @@ use Doctrine\ORM\Mapping as ORM;
 use Monolog\Logger;
 use Ramsey\Uuid\Uuid;
 
-require_once 'NotificationException.php';
-require_once __DIR__ . "/../src/objects.php";
-//namespace cottagelabs/php-coar-notifications;
+require_once 'COARNotificationException.php';
+require_once __DIR__ . "/../src/COARNotificationObjects.php";
 
 $config = include(__DIR__ . '/../config.php');
 
@@ -26,10 +25,10 @@ const ACTIVITIES = array('accept', 'add', 'announce', 'arrive', 'block', 'create
  * @ORM\Entity
  * @ORM\InheritanceType("SINGLE_TABLE")
  * @ORM\DiscriminatorColumn(name="direction", type="string")
- * @ORM\DiscriminatorMap({"INBOUND" = "Notification", "OUTBOUND" = "OutboundNotification"})
+ * @ORM\DiscriminatorMap({"INBOUND" = "COARNotification", "OUTBOUND" = "OutboundCOARNotification"})
  * @ORM\Table(name="notifications")
  */
-class Notification {
+class COARNotification {
 
     // create a log channel
     private Logger $log;
@@ -47,7 +46,7 @@ class Notification {
     private string $id;
 
     /**
-     * @ORM\Column(type="string")
+     * @ORM\Column(type="string", nullable=true)
      */
     private string $inReplyToId;
 
@@ -149,12 +148,12 @@ class Notification {
      * It's recommended to be URN:UUID, an HTTP URI may be used.
      * It is checked for being either UUID4 or a valid URL.
      * @param $id
-     * @throws NotificationException
+     * @throws COARNotificationException
      */
     private function validateId($id):void {
         // Only condition that can be considered invalid $id
         if($id === "") {
-            throw new NotificationException('UId can not be null.');
+            throw new COARNotificationException('UId can not be null.');
         }
         elseif (!filter_var($id, FILTER_VALIDATE_URL) &&
             (preg_match('/^urn:uuid:[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/', $id) === 0)) {
@@ -165,11 +164,11 @@ class Notification {
     }
 
     /**
-     * @throws NotificationException
+     * @throws COARNotificationException
      */
     private function validateType($type):void {
         if($type === "")
-            throw new NotificationException("Type can not be null.");
+            throw new COARNotificationException("Type can not be null.");
         else if(count(array_diff(array_map('strtolower', json_decode($type)), ACTIVITIES)) === count(json_decode($type))) {
             //!in_array(strtolower($type), ACTIVITIES)) {
             $this->log->warning("(UId: '" . $this->getId() . "') Type '$type' is not an Activity Stream 2.0 Activity Type.");
@@ -203,7 +202,7 @@ class Notification {
 
     /**
      * @param string $type
-     * @throws NotificationException
+     * @throws COARNotificationException
      */
     public function setType(string $type): void
     {
@@ -238,7 +237,7 @@ class Notification {
  * @ORM\Entity
  * @ORM\Table(name="notifications")
  */
-class OutboundNotification extends Notification {
+class OutboundCOARNotification extends COARNotification {
 
     private object $base;
     private Logger $log;
@@ -251,44 +250,36 @@ class OutboundNotification extends Notification {
         $this->base = new stdClass();
         $this->base->{'@context'} = ["https://www.w3.org/ns/activitystreams", "http://purl.org/coar/notify"];
 
-        // Actor
-        $this->base->actor = new stdClass();
-
-        // Context
-        $this->base->context = new stdClass();
-
-        // Object
-        $this->base->object = new stdClass();
-
         // Origin
         $this->base->origin = new stdClass();
         $this->base->origin->type = ["Service"];
         $this->base->origin->id = $config['id'];
         $this->base->origin->inbox = $config['inbox_url'];
 
-        // Target
-        $this->base->target = new stdClass();
-        $this->base->target->type = ["Service"];
-
-        // Context
-        $this->base->context = new stdClass();
-        $this->base->context->type = "sorg:AboutPage";
+        $this->base->actor = new stdClass();
 
     }
 
-    public function setGenericProperties(COARActor $cActor, COARObject $cObject,
-                                         COARContext $cContext, COARTarget $cTarget) {
+    /**
+     * @throws COARNotificationException
+     */
+    public function setGenericProperties(COARNotificationActor $cActor, COARNotificationObject $cObject,
+                                         COARNotificationContext $cContext, COARNotificationTarget $cTarget) {
         $this->setId();
         $this->base->id = $this->getId();
+
+        $this->log->info(json_encode($cActor->getType()));
 
         $this->base->actor = $cActor;
 
         // Object with a special character property name
+        $this->base->object = new stdClass();
         $this->base->object->type = $cObject->getType();
         $this->base->object->id = $cObject->getId();
         $this->base->object->{'ietf:cite-as'} = $cObject->getIetfCiteAs();
 
         // Context and child URL object both with special character property name
+        $this->base->context = new stdClass();
         $this->base->context->id = $cContext->getId();
         $this->base->context->{'ietf:cite-as'} = $cContext->getIetfCiteAs();
         $this->base->context->url = new stdClass();
@@ -298,19 +289,27 @@ class OutboundNotification extends Notification {
 
         $this->base->target = $cTarget;
 
+        $this->setType(json_encode($this->base->type));
+
+        $this->setOriginal(json_encode($this->base));
+
     }
 
     /**
      * Author requests review with possible endorsement (via overlay journal)
      * Implements step 3 of scenario 1
      * https://notify.coar-repositories.org/scenarios/1/3/
-     * @return string
+     * @param COARNotificationActor $cActor
+     * @param COARNotificationContext $cContext
+     * @param COARNotificationObject $cObject
+     * @param COARNotificationTarget $cTarget
+     * @param null $inReplyTo
+     * @return array
+     * @throws COARNotificationException
      */
-    public function announceReview(string $actorId, string $actorName, string $actorType,
-                                   string $articleId, string $articleCite,
-                                   string $reviewId, string $reviewCite, array $reviewType,
-                                   string $targetId, string $targetInbox, string $inReplyTo = null): array {
-        $this->setGenericProperties();
+    public function announceReview(COARNotificationActor  $cActor, COARNotificationContext $cContext,
+                                   COARNotificationObject $cObject, COARNotificationTarget $cTarget,
+                                   $inReplyTo = null): array {
 
         // Special case of step 4 scenario 2
         // https://notify.coar-repositories.org/scenarios/2/4/
@@ -319,27 +318,10 @@ class OutboundNotification extends Notification {
             $this->setInReplyToId($inReplyTo);
         }
 
-        // Actor
-        $this->base->actor->id = $actorId;
-        $this->base->actor->name = $actorName;
-        $this->base->actor->type = $actorType;
-
-        // Object
-        $this->base->object->type = $reviewType;
-        $this->base->object->id = $reviewId;
-        $this->base->object->{'ietf:cite-as'} = $reviewCite;
-
         $this->base->type = ["Announce", "coar-notify:ReviewAction"];
-        $this->setType(json_encode($this->base->type));
-        // Context
-        $this->base->context->id = $articleId;
-        $this->base->context->{'ietf:cite-as'} = $articleCite;
-        $this->base->context->url->type =  ["Article", "sorg:ScholarlyArticle"];
-        // Target
-        $this->base->target->id = $targetId;
-        $this->base->target->inbox = $targetInbox;
 
-        $this->setOriginal(json_encode($this->base));
+        $this->setGenericProperties($cActor, $cObject, $cContext, $cTarget);
+
         return $this->send();
     }
 
@@ -349,20 +331,17 @@ class OutboundNotification extends Notification {
      * Author requests review with possible endorsement (via overlay journal)
      * Implements step 3 of scenario 1
      * https://notify.coar-repositories.org/scenarios/1/5/
-     * @param string $articleId
-     * @param string $articleCite
-     * @param string $reviewId
-     * @param string $reviewCite
-     * @param array $reviewType
-     * @param string $targetId
-     * @param string $targetInbox
+     * @param COARNotificationActor $cActor
+     * @param COARNotificationContext $cContext
+     * @param COARNotificationObject $cObject
+     * @param COARNotificationTarget $cTarget
+     * @param null $inReplyTo
      * @return array
-     * @throws NotificationException
+     * @throws COARNotificationException
      */
-    public function announceEndorsement(COARActor $cActor, COARContext $cContext, COARObject $cObject,
-                                        COARTarget $cTarget, $inReplyTo = null): array {
-        $this->setGenericProperties($cActor, $cObject, $cContext, $cTarget);
-
+    public function announceEndorsement(COARNotificationActor  $cActor, COARNotificationContext $cContext,
+                                        COARNotificationObject $cObject, COARNotificationTarget $cTarget,
+                                        $inReplyTo = null): array {
         // Special case of step 6 scenario 2
         // https://notify.coar-repositories.org/scenarios/2/4/
         if(!empty($inReplyTo)) {
@@ -371,9 +350,9 @@ class OutboundNotification extends Notification {
         }
 
         $this->base->type = ["Announce", "coar-notify:EndorsementAction"];
-        $this->setType(json_encode($this->base->type));
 
-        $this->setOriginal(json_encode($this->base));
+        $this->setGenericProperties($cActor, $cObject, $cContext, $cTarget);
+
         return $this->send();
     }
 
@@ -382,43 +361,18 @@ class OutboundNotification extends Notification {
      * Author requests review with possible endorsement (via repository)
      * Implements step 3 of scenario 2
      * https://notify.coar-repositories.org/scenarios/2/2/
-     * @param string $actorId
-     * @param string $actorName
-     * @param string $articleId
-     * @param string $articleCite
-     * @param string $reviewId
-     * @param string $reviewCite
-     * @param array $reviewType
-     * @param string $targetId
-     * @param string $targetInbox
-     * @throws NotificationException
+     * @param COARNotificationActor $cActor
+     * @param COARNotificationContext $cContext
+     * @param COARNotificationObject $cObject
+     * @param COARNotificationTarget $cTarget
+     * @return array
+     * @throws COARNotificationException
      */
-    public function requestReview(string $actorId, string $actorName,
-                                  string $articleId, string $articleCite,
-                                  string $reviewId, string $reviewCite, array $reviewType,
-                                  string $targetId, string $targetInbox): array {
-        $this->setGenericProperties();
-
-        // Actor
-        $this->base->actor->id = $actorId;
-        $this->base->actor->name = $actorName;
-        $this->base->actor->type = "Person";
-        // Object
-        $this->base->object->type = $reviewType;
-        $this->base->object->id = $reviewId;
-        $this->base->object->{'ietf:cite-as'} = $reviewCite;
-
+    public function requestReview(COARNotificationActor  $cActor, COARNotificationContext $cContext,
+                                  COARNotificationObject $cObject, COARNotificationTarget $cTarget): array {
         $this->base->type = ["Offer", "coar-notify:ReviewAction"];
-        $this->setType(json_encode($this->base->type));
-        // Context
-        $this->base->context->id = $articleId;
-        $this->base->context->{'ietf:cite-as'} = $articleCite;
-        $this->base->context->url->type =  ["Article", "sorg:ScholarlyArticle"];
-        // Target
-        $this->base->target->id = $targetId;
-        $this->base->target->inbox = $targetInbox;
+        $this->setGenericProperties($cActor, $cObject, $cContext, $cTarget);
 
-        $this->setOriginal(json_encode($this->base));
         return $this->send();
     }
 

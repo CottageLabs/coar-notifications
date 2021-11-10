@@ -1,8 +1,8 @@
 <?php
 
 require_once __DIR__ . "/../bootstrap.php";
-require_once __DIR__ . '/../orm/Notification.php';
-require_once __DIR__ . '/../orm/NotificationException.php';
+require_once __DIR__ . '/../orm/COARNotification.php';
+require_once __DIR__ . '/../orm/COARNotificationException.php';
 
 $config = include(__DIR__ . '/../config.php');
 
@@ -14,7 +14,7 @@ $config = include(__DIR__ . '/../config.php');
 /**
  * TODO, cater for either http or https?
  *
- * @throws NotificationException
+ * @throws COARNotificationException
  */
 function validate_notification($notification_json) {
     // Validating that @context has ActivityStreams and Coar notify namespaces.
@@ -22,7 +22,7 @@ function validate_notification($notification_json) {
         || !in_array("https://www.w3.org/ns/activitystreams", $notification_json['@context'])
         || !in_array("http://purl.org/coar/notify", $notification_json['@context'])) {
         //print_r($notification_json['@context']);
-        throw new NotificationException("The '@context' must include: Activity Streams 2.0 and Notify.");
+        throw new COARNotificationException("The '@context' must include: Activity Streams 2.0 and Notify.");
     }
 
     // Validating that id must not be empty
@@ -30,7 +30,7 @@ function validate_notification($notification_json) {
 
     foreach($mandatory_properties as $mandatory_property) {
         if($notification_json[$mandatory_property] === '') {
-            throw new NotificationException("$mandatory_property is empty.");
+            throw new COARNotificationException("$mandatory_property is empty.");
         }
 
     }
@@ -49,7 +49,7 @@ else if($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 
 }
 else if($_SERVER['REQUEST_METHOD'] === 'POST') {
-    // See https://www.w3.org/TR/2017/REC-ldn-20170502/#sender
+    // See https://www.w3.org/TR/2017/REC-ldn-2COARTarget0170502/#sender
     if(str_starts_with($_SERVER["CONTENT_TYPE"], 'application/ld+json')) {
         // Could be followed by a 'profile' but that's not actioned on
         // https://datatracker.ietf.org/doc/html/rfc6906
@@ -81,7 +81,7 @@ else if($_SERVER['REQUEST_METHOD'] === 'POST') {
         try {
             validate_notification($notification_json);
         }
-        catch (NotificationException $exception) {
+        catch (COARNotificationException $exception) {
             $config['log']->error("Invalid notification: " . $exception->getMessage());
             $config['log']->debug($exception->getTraceAsString());
             $config['log']->debug((print_r($notification_json, true)));
@@ -93,12 +93,13 @@ else if($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         // Creating an inbound ORM object
         try {
-            $notification = new Notification();
+            $notification = new COARNotification();
             $notification->setId(json_encode($notification_json['id']) ?? '');
             $notification->setType(json_encode($notification_json['type']) ?? '');
             $notification->setOriginal(json_encode($notification_json));
+            $notification->setStatus(201);
         }
-        catch (NotificationException $exception) {
+        catch (COARNotificationException $exception) {
             $config['log']->error($exception->getMessage());
             http_response_code(422);
             return;
@@ -128,7 +129,7 @@ else if($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     }
     else {
-        $config['log']->debug("415 Unsupported Media Type: received a POST but content type is '"
+        $config['log']->debug("415 Unsupported Media Type: received a POST but content type '"
             . $_SERVER["CONTENT_TYPE"] . "' not an accepted format.");
         http_response_code(415);
     }

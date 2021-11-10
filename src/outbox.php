@@ -1,42 +1,33 @@
 <?php
 
 require_once __DIR__ . "/../bootstrap.php";
-require_once __DIR__ . "/../orm/Notification.php";
+require_once __DIR__ . "/../orm/COARNotification.php";
 
 $config = include(__DIR__ . '/../config.php');
 
 
-$notification = new OutboundNotification();
+$notification = new OutboundCOARNotification();
 
-/*echo($notification->announceReview("https://research-organisation.org/repository/preprint/201203/421/",
-    "https://doi.org/10.5555/12345680",
-    "https://overlay-journal.com/reviews/000001/00001",
-    "https://doi.org/10.3214/987654",
-    ["Document", "sorg:Review"],
-    "https://research-organisation.org/repository",
-    "http://localhost:8080/inbox.php"));*/
+$cNActor = new COARNotificationActor("actorId", "actorName", "Person");
 
-$actor = new COARActor("actorId", "actorName", "Person");
-
-$cObject = new COARObject("https://overlay-journal.com/reviews/000001/00001",
+$cObject = new COARNotificationObject("https://overlay-journal.com/reviews/000001/00001",
     "https://doi.org/10.3214/987654", ["Document", "sorg:Review"]);
 
-$cUrl = new COARURL("https://research-organisation.org/repository/preprint/201203/421/content.pdf",
+$cUrl = new COARNotificationURL("https://research-organisation.org/repository/preprint/201203/421/content.pdf",
     "application/pdf",
     ["Article", "sorg:ScholarlyArticle"]);
 
-$cContext = new COARContext("https://research-organisation.org/repository/preprint/201203/421/",
+$cContext = new COARNotificationContext("https://research-organisation.org/repository/preprint/201203/421/",
     "https://doi.org/10.5555/12345680",
     ["sorg:AboutPage"], $cUrl);
 
-$cTarget = new COARTarget("https://research-organisation.org/repository",
+$cTarget = new COARNotificationTarget("https://research-organisation.org/repository",
     "http://localhost:81/post");
-
-$t = $notification->announceEndorsement($actor,
-    $cContext,
-    $cObject,
-    $cTarget);
 //"http://localhost:8080/src/inbox.php"
+//http://localhost:81/post
+
+$t = $notification->announceEndorsement($cNActor, $cContext,  $cObject,  $cTarget);
+
 
 print_r($t);
 

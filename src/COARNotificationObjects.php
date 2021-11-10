@@ -1,6 +1,7 @@
 <?php
 
-class COARActor {
+class COARNotificationActor implements JsonSerializable
+{
     private string $id;
     private string $name;
     private string $type;
@@ -60,9 +61,18 @@ class COARActor {
         $this->type = $type;
     }
 
+    public function jsonSerialize(): stdClass
+    {
+        $json = new stdClass();
+
+        foreach ($this as $key => $value) {
+            $json->$key = $value;
+        }
+        return $json;
+    }
 }
 
-class COARObject {
+class COARNotificationObject {
     private string $id;
     private string $ietfCiteAs;
     private array $type;
@@ -123,7 +133,7 @@ class COARObject {
     }
 }
 
-class COARURL {
+class COARNotificationURL {
     private string $id;
     private string $mediaType;
     private array $type;
@@ -185,8 +195,8 @@ class COARURL {
 
 }
 
-class COARContext extends COARObject {
-    private COARURL $url;
+class COARNotificationContext extends COARNotificationObject {
+    private COARNotificationURL $url;
 
     public function __construct($id, $ietfCiteAs, $type, $url) {
         parent::__construct($id, $ietfCiteAs, $type);
@@ -197,7 +207,7 @@ class COARContext extends COARObject {
     /**
      * @return string
      */
-    public function getUrl(): COARURL
+    public function getUrl(): COARNotificationURL
     {
         return $this->url;
     }
@@ -205,13 +215,13 @@ class COARContext extends COARObject {
     /**
      * @param string $url
      */
-    public function setUrl(COARURL $url): void
+    public function setUrl(COARNotificationURL $url): void
     {
         $this->url = $url;
     }
 }
 
-class COARTarget {
+class COARNotificationTarget implements JsonSerializable {
     private string $id;
     private string $inbox;
     private string $type;
@@ -271,4 +281,13 @@ class COARTarget {
         $this->type = $type;
     }
 
+    public function jsonSerialize(): stdClass
+    {
+        $json = new stdClass();
+
+        foreach ($this as $key => $value) {
+            $json->$key = $value;
+        }
+        return $json;
+    }
 }

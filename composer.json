@@ -1,6 +1,6 @@
 {
-  "name": "cottagelabs/php-coar-notifications",
-  "description": "A Composer packgage that ",
+  "name": "cottagelabs/coar-notifications",
+  "description": "A COAR Notify inbox and client to send COAR Notifications (see https://notify.coar-repositories.org/). Both sent and received COAR Notifications are persisted in a MySQL/MariaDB database.",
   "type": "library",
   "authors": [
     {
@@ -9,6 +9,7 @@
     }
   ],
   "require": {
+    "php": "^7.4",
     "doctrine/orm": "^2.6.2",
     "monolog/monolog": "^1.26",
     "symfony/cache": "^5.3",
@@ -19,5 +20,7 @@
   },
   "autoload": {
     "psr-0": {"": "src/"}
-  }
+  },
+  "version": "1.0.0-beta1",
+  "keywords": ["linked-data", "repository", "open access", "publishing", "peer-review"]
 }
