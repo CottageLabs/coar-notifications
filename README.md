@@ -43,7 +43,7 @@ require_once __DIR__ . "/../bootstrap.php";
 require_once __DIR__ . "/../orm/COARNotification.php";
 $config = include(__DIR__ . '/../config.php');
 ```
-before creating an OutboundNotification object:
+before creating an OutboundNotification object the necessary ActivityStreams parts are created in isolation:
 
 ```
 $actor = new COARNotificationActor("actorId", "actorName", "Person");
@@ -65,7 +65,7 @@ $target = new COARNotificationTarget("https://research-organisation.org/reposito
 $notification = new OutboundCOARNotification($actor, $object, $context, $target);
 ```
 
-This constitutions an almost fully formed COAR Notification, only this left is to call one of the following:
+Put together constitutes an almost fully formed COAR Notification, only thing left is to call one of the following:
 
 `$notification->announceEndorsement();`
 
@@ -80,12 +80,3 @@ All three methods return an array containing the http response code as well as b
 ## License
 TODO
 
-## TODO
-* Set up as a Composer package
-* How Symfonised does this have to be?
-* Asynchronous processing required?
-* Does notification ID need to be unique?
-* What PSR needs to be set?
-* Namespace issues?
-* Respond to HEAD request (https://www.w3.org/TR/2017/REC-ldn-20170502/)
-* More specific exceptions?

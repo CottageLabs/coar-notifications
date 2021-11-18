@@ -1,0 +1,11 @@
+## TODO
+* Set up as a Composer package
+* How Symfonised does this have to be?
+* Asynchronous processing required?
+* Does notification ID need to be unique?
+* What PSR needs to be set?
+* Namespace issues?
+* Respond to HEAD request (https://www.w3.org/TR/2017/REC-ldn-20170502/)
+* More specific exceptions?
+* Two modules, not one
+* Wrap into a wrapper class in order to instantiate entitymanager
