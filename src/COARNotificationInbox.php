@@ -10,19 +10,23 @@ $config = include(__DIR__ . '/../config.php');
 // done by Amu Guy who wrote the spec.
 
 
-
 /**
- * TODO, cater for either http or https?
+ *
  *
  * @throws COARNotificationException
  */
 function validate_notification($notification_json) {
     // Validating that @context has ActivityStreams and Coar notify namespaces.
-    if(!isset($notification_json['@context'])
-        || !in_array("https://www.w3.org/ns/activitystreams", $notification_json['@context'])
-        || !in_array("http://purl.org/coar/notify", $notification_json['@context'])) {
-        //print_r($notification_json['@context']);
-        throw new COARNotificationException("The '@context' must include: Activity Streams 2.0 and Notify.");
+    if(!isset($notification_json['@context'])) {
+        throw new COARNotificationException("The notification must include a '@context' property.");
+    }
+
+    if(!count(preg_grep('^http[s]?://www.w3.org/ns/activitystreams$', $notification_json['@context']))) {
+        throw new COARNotificationException("The '@context' property must include Activity Streams 2.0 (https://www.w3.org/ns/activitystreams).");
+    }
+
+    if(!count(preg_grep('^http[s]?://purl.org/coar/notify$', $notification_json['@context']))) {
+        throw new COARNotificationException("The '@context' property must include Notify (https://purl.org/coar/notify).");
     }
 
     // Validating that id must not be empty

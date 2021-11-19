@@ -15,6 +15,8 @@ CNs do not have a final specification, but there are
 ## Installation & Setup
 Easiest way to install is to use Composer.
 
+`$ composer require cottagelabs/coar-notifications`
+
 To set up test the inbox you only need to have a running MySQL/MariaDB database the config for which is in `bootstrap.php`.
 
 Create the database in MySQL/MariaDB (by default `coar_inbox`) and then run: `$ php vendor/bin/doctrine orm:schema-tool:create` to create the database schema.
@@ -33,7 +35,14 @@ There are a few of configuration variables in `config.php`:
 | `connect_timeout`  | for how long the client attempts to post a notification         | 5         |
 | `user_agent`       | the client's user agent used to identify the client         | 'PHP Coar Notification Client'        |
 
+
+### Inbox
 The inbox is now live and will receive COAR Notifications.
+
+MySQL/MariaDB credentials are set up in `bootstrap.php`. A table called `notifications` which uses a 
+[single table inheritance](https://www.doctrine-project.org/projects/doctrine-orm/en/2.9/reference/inheritance-mapping.html#single-table-inheritance) mapping
+discriminator column, `direction`, to differentiate between `INBOUND` and `OUTBOUND`
+notifications.
 
 ### Sending
 In order to send notifications (see example in `src/outbox.php`) you need to include the following in the file's header: 
@@ -65,15 +74,15 @@ $target = new COARNotificationTarget("https://research-organisation.org/reposito
 $notification = new OutboundCOARNotification($actor, $object, $context, $target);
 ```
 
-Put together constitutes an almost fully formed COAR Notification, only thing left is to call one of the following:
+Put together, these POPOs constitute an almost fully formed COAR Notification, only thing left is to call one of the following:
 
 `$notification->announceEndorsement();`
 
-`$notification->announceReview()`
+`$notification->announceReview();`
 
 both of which have the optional `$inReplyTo` parameter, or:
 
-`$notification->requestReview()`
+`$notification->requestReview();`
 
 All three methods return an array containing the http response code as well as body.
 
