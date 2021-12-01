@@ -84,11 +84,11 @@ class COARNotificationInbox
 
         $this->entityManager = EntityManager::create($conn, $config);
 
-        $this->do_response();
+        // $this->do_response();
 
     }
 
-    private function do_response() {
+    public function do_response() {
         if ($_SERVER['REQUEST_METHOD'] === 'GET')   {
             http_response_code(403);
         }
@@ -137,7 +137,7 @@ class COARNotificationInbox
 
                 // Creating an inbound ORM object
                 try {
-                    $notification = new COARNotification();
+                    $notification = new COARNotification($this->logger);
                     $notification->setId(json_encode($notification_json['id']) ?? '');
                     $notification->setType(json_encode($notification_json['type']) ?? '');
                     $notification->setOriginal(json_encode($notification_json));
@@ -173,6 +173,39 @@ class COARNotificationInbox
                     . $_SERVER["CONTENT_TYPE"] . "' not an accepted format.");
                 http_response_code(415);
             }
+
+        }
+    }
+
+    public function announceEndorsement(COARNotificationActor $cActor, COARNotificationObject $cObject,
+                                        COARNotificationContext $cContext, COARNotificationTarget $cTarget) {
+        $notification = new OutboundCOARNotification($this->logger, $this->id, $this->inbox_url, $this->timeout,
+            $this->user_agent, $cActor, $cObject, $cContext,  $cTarget);
+        $notification->announceEndorsement();
+        $this->persistOutboundNotification($notification);
+    }
+
+    public function requestReview(COARNotificationActor $cActor, COARNotificationObject $cObject,
+                                  COARNotificationContext $cContext, COARNotificationTarget $cTarget) {
+        $notification = new OutboundCOARNotification($this->logger, $this->id, $this->inbox_url, $this->timeout,
+            $this->user_agent, $cActor, $cObject, $cContext,  $cTarget);
+        $notification->requestReview();
+        $this->persistOutboundNotification($notification);
+    }
+
+    private function persistOutboundNotification($notification) {
+        try {
+            $this->entityManager->persist($notification);
+            $this->entityManager->flush();
+            $this->logger->info("Wrote outbound notification (ID: " . $notification->getId() . ") to database.");
+        }
+        catch (Exception $exception) {
+            // Trouble catching PDOExceptions
+            //if($exception->getCode() == 1062) {
+            $this->logger->error($exception->getMessage());
+            $this->logger->debug($exception->getTraceAsString());
+            return;
+            //}
 
         }
     }

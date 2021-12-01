@@ -7,7 +7,7 @@ use Ramsey\Uuid\Uuid;
 require_once 'COARNotificationException.php';
 require_once __DIR__ . "/../src/COARNotificationObjects.php";
 
-$config = include(__DIR__ . '/../config.php');
+// $config = include(__DIR__ . '/../config.php');
 
 // Not exhaustive
 // This list has been transformed to lower-case
@@ -73,10 +73,9 @@ class COARNotification {
 
     /**
      */
-    public function __construct()
+    public function __construct(Logger $logger)
     {
-        global $config;
-        $this->log = $config['log'];
+        $this->log = $logger;
 
     }
 
@@ -241,22 +240,27 @@ class OutboundCOARNotification extends COARNotification {
 
     private object $base;
     private Logger $log;
+    private int $timeout;
+    private string $user_agent;
 
-    public function __construct(COARNotificationActor $cActor, COARNotificationObject $cObject,
+    public function __construct(Logger $logger, string $id, string $inbox_url, int $timeout, string $user_agent,
+                                COARNotificationActor $cActor, COARNotificationObject $cObject,
                                 COARNotificationContext $cContext, COARNotificationTarget $cTarget)
     {
-        global $config;
-        parent::__construct();
+        parent::__construct($logger);
 
-        $this->log = $config['log'];
+        $this->log = $logger;
+        $this->timeout = $timeout;
+        $this->user_agent = $user_agent;
+
         $this->base = new stdClass();
         $this->base->{'@context'} = ["https://www.w3.org/ns/activitystreams", "http://purl.org/coar/notify"];
 
         // Origin
         $this->base->origin = new stdClass();
         $this->base->origin->type = ["Service"];
-        $this->base->origin->id = $config['id'];
-        $this->base->origin->inbox = $config['inbox_url'];
+        $this->base->origin->id = $id;
+        $this->base->origin->inbox = $inbox_url;
 
         $this->base->actor = new stdClass();
 
@@ -356,7 +360,7 @@ class OutboundCOARNotification extends COARNotification {
      * todo Handle send HTTP errors
      */
     public function send(): array {
-        global $config;
+        //global $config;
 
         // create curl resource
         $ch = curl_init();
@@ -364,10 +368,10 @@ class OutboundCOARNotification extends COARNotification {
 
         // set url
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, $config['connect_timeout']);
+        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, $this->timeout);
         //curl_setopt($ch, CURLOPT_TIMEOUT, 5); //timeout in seconds
         curl_setopt($ch, CURLOPT_URL, $this->base->target->getInbox());
-        curl_setopt($ch, CURLOPT_USERAGENT, $config['user_agent']);
+        curl_setopt($ch, CURLOPT_USERAGENT, $this->user_agent);
         curl_setopt($ch, CURLOPT_POST, 1);
         curl_setopt($ch, CURLOPT_HTTPHEADER, array('Content-Type:application/ld+json'));
         curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($this->base));
