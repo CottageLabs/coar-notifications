@@ -25,4 +25,6 @@ $conn = array(
 
 
 // obtaining the entity manager
-$entityManager = EntityManager::create($conn, $config);
+// $entityManager = EntityManager::create($conn, $config);
+
+return EntityManager::create($conn, $config);
