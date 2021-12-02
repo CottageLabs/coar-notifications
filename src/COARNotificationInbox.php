@@ -55,17 +55,19 @@ class COARNotificationInbox
      * @throws COARNotificationException
      * @throws \Doctrine\ORM\ORMException
      */
-    public function __construct($db_user, $db_password, $db_name='coar_inbox', $id=null, $inbox_url=null, $timeout=5,
-                                $accepted_formats=array('application/ld+json'),
-                                $log_level=Logger::DEBUG, $user_agent='PHP Coar notify library')
+    public function __construct($db_user, $db_password, $db_host='127.0.0.1', $db_name='coar_inbox', $id=null,
+                                $inbox_url=null, $accepted_formats=array('application/ld+json'),
+                                $log_level=Logger::DEBUG,  $timeout=5, $user_agent='PHP Coar notify library')
     {
         if(!(isset($db_user) && isset($db_password)))
             throw new COARNotificationException('A database username and password required.');
 
         $this->id = $id ?? $_SERVER['SERVER_NAME'];
         $this->inbox_url = $inbox_url ?? $_SERVER['PHP_SELF'];
-        $this->timeout = $timeout;
         $this->accepted_formats = $accepted_formats;
+
+        // Timeout and user agent are only relevant for outbound notifications
+        $this->timeout = $timeout;
         $this->user_agent = $user_agent;
 
         $this->logger = new Logger('NotifyCOARLogger');
@@ -74,7 +76,7 @@ class COARNotificationInbox
 
         $config = Setup::createAnnotationMetadataConfiguration(array(__DIR__."/orm"),
             true, null, null, false);
-        $conn = array('host'     => '127.0.0.1',
+        $conn = array('host'     => $db_host,
             'driver'   => 'pdo_mysql',
             'user'     => $db_user,
             'password' => $db_password,
@@ -84,6 +86,10 @@ class COARNotificationInbox
         $this->entityManager = EntityManager::create($conn, $config);
 
         //$this->do_response();
+
+    }
+
+    private function test_database() {
 
     }
 
