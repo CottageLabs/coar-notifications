@@ -50,6 +50,7 @@ class COARNotificationInbox
     public int $timeout;
     public array $accepted_formats;
     public string $user_agent;
+    private bool $connected = false;
 
     /**
      * @throws COARNotificationException
@@ -60,7 +61,7 @@ class COARNotificationInbox
                                 $log_level=Logger::DEBUG,  $timeout=5, $user_agent='PHP Coar notify library')
     {
         if(!(isset($db_user) && isset($db_password)))
-            throw new COARNotificationException('A database username and password required.');
+            throw new COARNotificationException('A database username and a password is required.');
 
         $this->id = $id ?? $_SERVER['SERVER_NAME'];
         $this->inbox_url = $inbox_url ?? $_SERVER['PHP_SELF'];
@@ -85,14 +86,23 @@ class COARNotificationInbox
 
         $this->entityManager = EntityManager::create($conn, $config);
 
+        // Verifying database connection
+        try {
+            $this->entityManager->getConnection()->connect();
+            $this->logger->debug("Database connection verified.");
+            $this->connected = true;
+        } catch (\Exception $e) {
+            $this->logger->error("Couldn't establish a database connection: " . $e);
+            return;
+        }
+
         //$this->do_response();
 
     }
 
-    private function test_database() {
-
-    }
-
+    /**
+     * @throws COARNotificationException
+     */
     public function do_response() {
         if ($_SERVER['REQUEST_METHOD'] === 'GET')   {
             http_response_code(403);
@@ -110,6 +120,9 @@ class COARNotificationInbox
                 // https://datatracker.ietf.org/doc/html/rfc6906
 
                 $this->logger->debug('Received a ld+json POST request.');
+
+                if(!$this->connected)
+                    throw new COARNotificationNoDatabaseException();
 
                 // Validating JSON and keeping the variable
                 // Alternative is to load into EasyRDF, the go to rdf library for PHP,
@@ -185,16 +198,30 @@ class COARNotificationInbox
         }
     }
 
-    public function announceEndorsement(COARNotificationActor $cActor, COARNotificationObject $cObject,
+    /**
+     * @throws COARNotificationException
+     * @throws COARNotificationNoDatabaseException
+     */
+    public function announceEndorsement(COARNotificationActor   $cActor, COARNotificationObject $cObject,
                                         COARNotificationContext $cContext, COARNotificationTarget $cTarget) {
+        if(!$this->connected)
+            throw new COARNotificationNoDatabaseException();
+
         $notification = new OutboundCOARNotification($this->logger, $this->id, $this->inbox_url, $this->timeout,
             $this->user_agent, $cActor, $cObject, $cContext,  $cTarget);
         $notification->announceEndorsement();
         $this->persistOutboundNotification($notification);
     }
 
-    public function requestReview(COARNotificationActor $cActor, COARNotificationObject $cObject,
+    /**
+     * @throws COARNotificationException
+     * @throws COARNotificationNoDatabaseException
+     */
+    public function requestReview(COARNotificationActor   $cActor, COARNotificationObject $cObject,
                                   COARNotificationContext $cContext, COARNotificationTarget $cTarget) {
+        if(!$this->connected)
+            throw new COARNotificationNoDatabaseException();
+
         $notification = new OutboundCOARNotification($this->logger, $this->id, $this->inbox_url, $this->timeout,
             $this->user_agent, $cActor, $cObject, $cContext,  $cTarget);
         $notification->requestReview();
