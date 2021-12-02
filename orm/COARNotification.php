@@ -7,8 +7,6 @@ use Ramsey\Uuid\Uuid;
 require_once 'COARNotificationException.php';
 require_once __DIR__ . "/../src/COARNotificationObjects.php";
 
-// $config = include(__DIR__ . '/../config.php');
-
 // Not exhaustive
 // This list has been transformed to lower-case
 // ActivityStreams 2.0 Activity Types
@@ -16,8 +14,6 @@ require_once __DIR__ . "/../src/COARNotificationObjects.php";
 const ACTIVITIES = array('accept', 'add', 'announce', 'arrive', 'block', 'create', 'delete', 'dislike', 'flag',
     'follow', 'ignore', 'invite', 'join', 'leave', 'like', 'listen', 'move', 'offer', 'question', 'reject', 'read',
     'remove', 'tentativereject', 'tentativeaccept', 'travel', 'undo', 'update', 'view');
-
-
 
 
 /**
@@ -30,7 +26,6 @@ const ACTIVITIES = array('accept', 'add', 'announce', 'arrive', 'block', 'create
  */
 class COARNotification {
 
-    // create a log channel
     private Logger $log;
 
     /**
@@ -44,6 +39,16 @@ class COARNotification {
      * @ORM\Column(type="string", unique=true)
      */
     private string $id;
+
+    /**
+     * @ORM\Column(type="string", nullable=false)
+     */
+    private string $fromId;
+
+    /**
+     * @ORM\Column(type="string", nullable=false)
+     */
+    private string $toId;
 
     /**
      * @ORM\Column(type="string", nullable=true)
@@ -143,6 +148,38 @@ class COARNotification {
     }
 
     /**
+     * @return string
+     */
+    public function getFromId(): string
+    {
+        return $this->fromId;
+    }
+
+    /**
+     * @param string $fromId
+     */
+    public function setFromId(string $fromId): void
+    {
+        $this->fromId = $fromId;
+    }
+
+    /**
+     * @return string
+     */
+    public function getToId(): string
+    {
+        return $this->toId;
+    }
+
+    /**
+     * @param string $toId
+     */
+    public function setToId(string $toId): void
+    {
+        $this->toId = $toId;
+    }
+
+    /**
      * Validates $id argument passed to Notification constructor.
      * It's recommended to be URN:UUID, an HTTP URI may be used.
      * It is checked for being either UUID4 or a valid URL.
@@ -173,7 +210,6 @@ class COARNotification {
             $this->log->warning("(UId: '" . $this->getId() . "') Type '$type' is not an Activity Stream 2.0 Activity Type.");
 
         }
-        //$this->log->info(print_r(array_map('strtolower', json_decode($type)), true));
     }
 
     /**
@@ -267,6 +303,9 @@ class OutboundCOARNotification extends COARNotification {
         $this->setId();
         $this->base->id = $this->getId();
 
+        $this->setFromId($id);
+        $this->setToId($cTarget->getId());
+
         $this->log->info(json_encode($cActor->getType()));
 
         $this->base->actor = $cActor;
@@ -317,8 +356,6 @@ class OutboundCOARNotification extends COARNotification {
         return $this->send();
     }
 
-    // scenarios 1, 2, 3, 4 and 9,
-
     /**
      * Author requests review with possible endorsement (via overlay journal)
      * Implements step 3 of scenario 1
@@ -360,8 +397,6 @@ class OutboundCOARNotification extends COARNotification {
      * todo Handle send HTTP errors
      */
     public function send(): array {
-        //global $config;
-
         // create curl resource
         $ch = curl_init();
         $headers = [];

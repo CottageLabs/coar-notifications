@@ -11,7 +11,6 @@ require_once __DIR__ . '/../orm/COARNotificationException.php';
 // See https://rhiaro.co.uk/2017/08/diy-ldn for a very basic walkthrough of an ldn-inbox
 // done by Amu Guy who wrote the spec.
 
-
 /**
  *
  *
@@ -84,7 +83,7 @@ class COARNotificationInbox
 
         $this->entityManager = EntityManager::create($conn, $config);
 
-        // $this->do_response();
+        //$this->do_response();
 
     }
 
@@ -138,12 +137,15 @@ class COARNotificationInbox
                 // Creating an inbound ORM object
                 try {
                     $notification = new COARNotification($this->logger);
-                    $notification->setId(json_encode($notification_json['id']) ?? '');
+                    $notification->setId($notification_json['id'] ?? '');
+                    $notification->setFromId($notification_json['origin']['id']);
+                    $notification->setToId($notification_json['target']['id']);
                     $notification->setType(json_encode($notification_json['type']) ?? '');
                     $notification->setOriginal(json_encode($notification_json));
                     $notification->setStatus(201);
                 } catch (COARNotificationException $exception) {
                     $this->logger->error($exception->getMessage());
+                    $this->logger->debug($exception->getTraceAsString());
                     http_response_code(422);
                     return;
                 }
