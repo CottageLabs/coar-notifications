@@ -1,7 +1,7 @@
 # Coar Notification Inbox and Client
 
 This is a [COAR Notifications](https://notify.coar-repositories.org/) (CNs) inbox written in PHP 7.4.25
-to work as a Composer package. It uses [Doctrine](https://www.doctrine-project.org/) for persistence
+to work as a [Composer](https://getcomposer.org/) package. It uses [Doctrine](https://www.doctrine-project.org/) for persistence
 into a MySQL/MariaDB database, [Monolog](https://github.com/Seldaek/monolog) for logging and
 [ramsey/uuid](https://github.com/ramsey/uuid) to generate v4 UUIDs.
 
@@ -17,7 +17,7 @@ Easiest way to install is to use Composer.
 
 `$ composer require cottagelabs/coar-notifications`
 
-To set up test the inbox you need a MySQL/MariaDB database.
+To set up the inbox you need a MySQL/MariaDB database.
 
 Create the database in MySQL/MariaDB (by default `coar_inbox`) and then run: `$ php vendor/bin/doctrine orm:schema-tool:create` to create the database schema.
 Finally run a web server, For instance: `$ php -S localhost:8080 `.
@@ -26,8 +26,8 @@ There are a few of configuration parameters that can be passed to `COARNotificat
 
 | Variable           | Description  | Default value    |
 | -----              |    ----      |             --- |
-| `id`               | the system's URL        | N/A      |
-| `inbox_url`        | the inbox's URL         | N/A         |
+| `id`               | the system's URL        | `$_SERVER['SERVER_NAME']`      |
+| `inbox_url`        | the inbox's URL         | `$_SERVER['PHP_SELF']`         |
 | `accepted_formats` | accepted mime-type formats    |  'application/ld+json'        |
 | `log_level`        | log level as a Monolog constant (see [here](https://github.com/Seldaek/monolog/blob/main/doc/01-usage.md]))         | INFO         |
 | Client settings |

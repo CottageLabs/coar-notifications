@@ -65,6 +65,10 @@ class COARNotificationInbox
 
         $this->id = $id ?? $_SERVER['SERVER_NAME'];
         $this->inbox_url = $inbox_url ?? $_SERVER['PHP_SELF'];
+
+        if(!is_array($accepted_formats))
+            throw new InvalidArgumentException("'accepted_formats' argument must be an array.");
+
         $this->accepted_formats = $accepted_formats;
 
         // Timeout and user agent are only relevant for outbound notifications
