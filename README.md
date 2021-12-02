@@ -12,18 +12,17 @@ CNs do not have a final specification, but there are
 [_notification patterns_](https://notify.coar-repositories.org/patterns/), further exemplified in
 [_example scenarios_](https://notify.coar-repositories.org/scenarios/).
 
-## Installation & Setup
+## Installation & setup
 Easiest way to install is to use Composer.
 
 `$ composer require cottagelabs/coar-notifications`
 
-To set up test the inbox you only need to have a running MySQL/MariaDB database the config for which is in `bootstrap.php`.
+To set up test the inbox you need a MySQL/MariaDB database.
 
 Create the database in MySQL/MariaDB (by default `coar_inbox`) and then run: `$ php vendor/bin/doctrine orm:schema-tool:create` to create the database schema.
-Finally run a web server, For instance: `$ php -S localhost:8080 `
+Finally run a web server, For instance: `$ php -S localhost:8080 `.
 
-
-There are a few of configuration variables in `config.php`:
+There are a few of configuration parameters that can be passed to `COARNotificationInbox`:
 
 | Variable           | Description  | Default value    |
 | -----              |    ----      |             --- |
@@ -32,27 +31,26 @@ There are a few of configuration variables in `config.php`:
 | `accepted_formats` | accepted mime-type formats    |  'application/ld+json'        |
 | `log_level`        | log level as a Monolog constant (see [here](https://github.com/Seldaek/monolog/blob/main/doc/01-usage.md]))         | INFO         |
 | Client settings |
-| `connect_timeout`  | for how long the client attempts to post a notification         | 5         |
+| `timeout`  | for how long the client attempts to post a notification         | 5         |
 | `user_agent`       | the client's user agent used to identify the client         | 'PHP Coar Notification Client'        |
 
+In your PHP file do:
+
+``$coarNotificationInbox = new COARNotificationInbox($db_user='my-user', $db_password='my-secret-pw');``
 
 ### Inbox
 The inbox is now live and will receive COAR Notifications.
 
-MySQL/MariaDB credentials are set up in `bootstrap.php`. A table called `notifications` which uses a 
+A table called `notifications` is created which, uses a 
 [single table inheritance](https://www.doctrine-project.org/projects/doctrine-orm/en/2.9/reference/inheritance-mapping.html#single-table-inheritance) mapping
 discriminator column, `direction`, to differentiate between `INBOUND` and `OUTBOUND`
 notifications.
 
 ### Sending
-In order to send notifications (see example in `src/outbox.php`) you need to include the following in the file's header: 
+In order to send notifications you first need to initialize a `$coarNotificationInbox` object.
+This is because outbound notifications are saved to the same database table as described above.
 
-```
-require_once __DIR__ . "/../bootstrap.php";
-require_once __DIR__ . "/../orm/COARNotification.php";
-$config = include(__DIR__ . '/../config.php');
-```
-before creating an OutboundNotification object the necessary ActivityStreams parts are created in isolation:
+Before creating an OutboundNotification object the necessary ActivityStreams parts are created in isolation:
 
 ```
 $actor = new COARNotificationActor("actorId", "actorName", "Person");
