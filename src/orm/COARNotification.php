@@ -26,7 +26,7 @@ const ACTIVITIES = array('accept', 'add', 'announce', 'arrive', 'block', 'create
  */
 class COARNotification {
 
-    private Logger $log;
+    private Logger $logger;
 
     /**
      * @ ORM\Id
@@ -78,9 +78,10 @@ class COARNotification {
 
     /**
      */
-    public function __construct(Logger $logger)
+    public function __construct(Logger $logger=null)
     {
-        $this->log = $logger;
+        if(isset($logger))
+            $this->logger = $logger;
 
     }
 
@@ -150,11 +151,16 @@ class COARNotification {
     private function validateId($id):void {
         // Only condition that can be considered invalid $id
         if($id === "") {
+            if(isset($this->logger))
+                $this->logger->error('UId can not be null.');
             throw new COARNotificationException('UId can not be null.');
         }
-        elseif (!filter_var($id, FILTER_VALIDATE_URL) &&
-            (preg_match('/^urn:uuid:[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/', $id) === 0)) {
-            $this->log->warning("(UId: '$id') Uid is neither a valid URL nor an UUID.");
+
+        $pattern = '/^urn:uuid:[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/';
+
+        if (!filter_var($id, FILTER_VALIDATE_URL) && (preg_match($pattern, $id) === 0)) {
+            if(isset($this->logger))
+                $this->logger->warning("(UId: '$id') Uid is neither a valid URL nor an UUID.");
         }
 
 
@@ -164,11 +170,17 @@ class COARNotification {
      * @throws COARNotificationException
      */
     private function validateType($type):void {
-        if($type === "")
-            throw new COARNotificationException("Type can not be null.");
+        if($type === "") {
+            $msg = "(UId: '" . $this->getId() . "') Type can not be null.";
+            if (isset($this->logger))
+                $this->logger->error($msg);
+            throw new COARNotificationException($msg);
+        }
         else if(count(array_diff(array_map('strtolower', $type), ACTIVITIES)) === count($type)) {
             //!in_array(strtolower($type), ACTIVITIES)) {
-            $this->log->warning("(UId: '" . $this->getId() . "') Type '$type' is not an Activity Stream 2.0 Activity Type.");
+            if (isset($this->logger))
+                $this->logger->warning("(UId: '" . $this->getId() . "')"
+                    . "Type '$type' is not an Activity Stream 2.0 Activity Type.");
 
         }
     }
@@ -229,7 +241,7 @@ class COARNotification {
 class OutboundCOARNotification extends COARNotification {
 
     protected object $base;
-    private Logger $log;
+    private Logger $logger;
 
     /**
      * @throws Exception
@@ -240,7 +252,7 @@ class OutboundCOARNotification extends COARNotification {
     {
         parent::__construct($logger);
 
-        $this->log = $logger;
+        $this->logger = $logger;
 
         $this->base = new stdClass();
         $this->base->{'@context'} = ["https://www.w3.org/ns/activitystreams", "http://purl.org/coar/notify"];

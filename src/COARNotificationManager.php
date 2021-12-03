@@ -62,7 +62,7 @@ class COARNotificationManager
                                 $timeout=5, $user_agent='PHP Coar notify library')
     {
         if(!(is_array($db_conn) || $db_conn instanceof Connection))
-            throw new COARNotificationNoDatabaseException('A database username and a password is required.');
+            throw new COARNotificationNoDatabaseException('Either a database connection or a database configuration.');
 
         if(isset($logger))
             $this->logger = $logger;
