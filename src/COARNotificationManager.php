@@ -5,8 +5,8 @@ use Doctrine\ORM\Tools\Setup;
 use Monolog\Handler\RotatingFileHandler;
 use Monolog\Logger;
 
-require_once __DIR__ . '/../orm/COARNotification.php';
-require_once __DIR__ . '/../orm/COARNotificationException.php';
+require_once __DIR__ . '/orm/COARNotification.php';
+require_once __DIR__ . '/orm/COARNotificationException.php';
 
 // See https://rhiaro.co.uk/2017/08/diy-ldn for a very basic walkthrough of an ldn-inbox
 // done by Amu Guy who wrote the spec.
@@ -41,7 +41,7 @@ function validate_notification($notification_json) {
     }
 }
 
-class COARNotificationInbox
+class COARNotificationManager
 {
     private EntityManager $entityManager;
     public Logger $logger;
@@ -76,10 +76,10 @@ class COARNotificationInbox
         $this->user_agent = $user_agent;
 
         $this->logger = new Logger('NotifyCOARLogger');
-        $this->logger->pushHandler(new RotatingFileHandler('./log/NotifyCOARLogger.log',
+        $this->logger->pushHandler(new RotatingFileHandler(__DIR__ . '/../log/NotifyCOARLogger.log',
             0, $log_level, true, 0664));
 
-        $config = Setup::createAnnotationMetadataConfiguration(array(__DIR__."/orm"),
+        $config = Setup::createAnnotationMetadataConfiguration(array(__DIR__."/src/orm"),
             true, null, null, false);
         $conn = array('host'     => $db_host,
             'driver'   => 'pdo_mysql',
@@ -202,34 +202,119 @@ class COARNotificationInbox
         }
     }
 
-    /**
-     * @throws COARNotificationException
-     * @throws COARNotificationNoDatabaseException
-     */
-    public function announceEndorsement(COARNotificationActor   $cActor, COARNotificationObject $cObject,
-                                        COARNotificationContext $cContext, COARNotificationTarget $cTarget) {
-        if(!$this->connected)
-            throw new COARNotificationNoDatabaseException();
+    public function createOutboundNotification($cNActor, $cObject, $cContext, $cTarget): OutboundCOARNotification
+    {
+        return new OutboundCOARNotification($this->logger, $this->id, $this->inbox_url, $this->timeout,
+            $this->user_agent, $cNActor, $cObject, $cContext, $cTarget);
 
-        $notification = new OutboundCOARNotification($this->logger, $this->id, $this->inbox_url, $this->timeout,
-            $this->user_agent, $cActor, $cObject, $cContext,  $cTarget);
-        $notification->announceEndorsement();
-        $this->persistOutboundNotification($notification);
     }
 
     /**
+     * Author requests review with possible endorsement (via overlay journal)
+     * Implements step 3 of scenario 1
+     * https://notify.coar-repositories.org/scenarios/1/5/
+     * @param null $inReplyTo
+     * @return array
      * @throws COARNotificationException
-     * @throws COARNotificationNoDatabaseException
      */
-    public function requestReview(COARNotificationActor   $cActor, COARNotificationObject $cObject,
-                                  COARNotificationContext $cContext, COARNotificationTarget $cTarget) {
+    public function announceEndorsement(OutboundCOARNotification $outboundCOARNotification, $inReplyToId = null) {
         if(!$this->connected)
             throw new COARNotificationNoDatabaseException();
 
-        $notification = new OutboundCOARNotification($this->logger, $this->id, $this->inbox_url, $this->timeout,
-            $this->user_agent, $cActor, $cObject, $cContext,  $cTarget);
-        $notification->requestReview();
-        $this->persistOutboundNotification($notification);
+        if(!empty($inReplyToId))
+            $outboundCOARNotification->setInReplyToId($inReplyToId);
+
+        $outboundCOARNotification->setType(["Announce", "coar-notify:EndorsementAction"]);
+
+        $this->send($outboundCOARNotification);
+        $this->persistOutboundNotification($outboundCOARNotification);
+    }
+
+    /**
+     * Author requests review with possible endorsement (via overlay journal)
+     * Implements step 3 of scenario 1
+     * https://notify.coar-repositories.org/scenarios/1/3/
+     * @param null $inReplyTo
+     * @return array
+     * @throws COARNotificationException
+     */
+    public function announceReview(OutboundCOARNotification $outboundCOARNotification, $inReplyToId = null) {
+        if(!$this->connected)
+            throw new COARNotificationNoDatabaseException();
+
+        // Special case of step 4 scenario 2
+        // https://notify.coar-repositories.org/scenarios/2/4/
+        if(!empty($inReplyToId))
+            $outboundCOARNotification->setInReplyToId($inReplyToId);
+
+        $outboundCOARNotification->setType(["Announce", "coar-notify:ReviewAction"]);
+
+        $this->send($outboundCOARNotification);
+        $this->persistOutboundNotification($outboundCOARNotification);
+    }
+
+    /**
+     * Author requests review with possible endorsement (via repository)
+     * Implements step 3 of scenario 2
+     * https://notify.coar-repositories.org/scenarios/2/2/
+     * @return array
+     * @throws COARNotificationException
+     */
+    public function requestReview(OutboundCOARNotification $outboundCOARNotification) {
+        if(!$this->connected)
+            throw new COARNotificationNoDatabaseException();
+
+        $outboundCOARNotification->setType(["Offer", "coar-notify:ReviewAction"]);
+
+        $this->send($outboundCOARNotification);
+        $this->persistOutboundNotification($outboundCOARNotification);
+    }
+
+    /**
+     * todo Handle send HTTP errors
+     */
+    private function send(OutboundCOARNotification $outboundCOARNotification): array {
+        // create curl resource
+        $ch = curl_init();
+        $headers = [];
+
+        // set url
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, $this->timeout);
+        //curl_setopt($ch, CURLOPT_TIMEOUT, 5); //timeout in seconds
+        curl_setopt($ch, CURLOPT_URL, $outboundCOARNotification->getTargetURL());
+        curl_setopt($ch, CURLOPT_USERAGENT, $this->user_agent);
+        curl_setopt($ch, CURLOPT_POST, 1);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, array('Content-Type:application/ld+json'));
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $outboundCOARNotification->getJSON());
+        curl_setopt($ch, CURLOPT_HEADERFUNCTION,
+            function($curl, $header) use (&$headers)
+            {
+                $len = strlen($header);
+                $header = explode(':', $header, 2);
+                if (count($header) < 2) // ignore invalid headers
+                    return $len;
+
+                $headers[strtolower(trim($header[0]))][] = trim($header[1]);
+
+                return $len;
+            }
+        );
+
+        // Send request.
+        $result = curl_exec($ch);
+        $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+
+        $outboundCOARNotification->setStatus($http_code);
+
+        $this->logger->info($outboundCOARNotification->getTargetURL());
+        $this->logger->info($http_code);
+        $this->logger->info(print_r($headers, true));
+        $this->logger->info($result);
+
+        return [$http_code, $result];
+
     }
 
     private function persistOutboundNotification($notification) {

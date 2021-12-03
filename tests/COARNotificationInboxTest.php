@@ -3,10 +3,10 @@
 use PHPUnit\Framework\TestCase;
 use Http\Mock\Client;
 
-require_once  __DIR__ ."/../src/COARNotificationInbox.php";
-require_once  __DIR__ . "/../orm/COARNotification.php";
+require_once __DIR__ . "/../src/COARNotificationManager.php";
+require_once __DIR__ . "/../src/orm/COARNotification.php";
 
-final class COARNotificationInboxTest extends TestCase
+final class COARNotificationManagerTest extends TestCase
 {
 
     public function test_validate_notification(): void

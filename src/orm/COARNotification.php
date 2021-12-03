@@ -5,7 +5,7 @@ use Monolog\Logger;
 use Ramsey\Uuid\Uuid;
 
 require_once 'COARNotificationException.php';
-require_once __DIR__ . "/../src/COARNotificationObjects.php";
+require_once __DIR__ . "/../COARNotificationObjects.php";
 
 // Not exhaustive
 // This list has been transformed to lower-case
@@ -95,9 +95,9 @@ class COARNotification {
     /**
      * @param mixed $original
      */
-    public function setOriginal($original): void
+    public function setOriginal(string $original): void
     {
-        $this->original = $original;
+        $this->original = json_encode($original);
     }
 
     /**
@@ -144,7 +144,8 @@ class COARNotification {
      */
     public function setInReplyToId($inReplyToId): void
     {
-        $this->inReplyToId = $inReplyToId;
+        $this->base->inReplyTo = $inReplyToId;
+        $this->inReplyToId = json_encode($inReplyToId);
     }
 
     /**
@@ -239,10 +240,11 @@ class COARNotification {
      * @param string $type
      * @throws COARNotificationException
      */
-    public function setType(string $type): void
+    public function setType(array $type): void
     {
         $this->validateType($type);
-        $this->type = $type;
+        $this->base->type = $type;
+        $this->type = json_encode($type);
     }
 
     public function __toString(): string
@@ -274,7 +276,7 @@ class COARNotification {
  */
 class OutboundCOARNotification extends COARNotification {
 
-    private object $base;
+    protected object $base;
     private Logger $log;
     private int $timeout;
     private string $user_agent;
@@ -306,8 +308,6 @@ class OutboundCOARNotification extends COARNotification {
         $this->setFromId($id);
         $this->setToId($cTarget->getId());
 
-        $this->log->info(json_encode($cActor->getType()));
-
         $this->base->actor = $cActor;
 
         // Object with a special character property name
@@ -327,117 +327,18 @@ class OutboundCOARNotification extends COARNotification {
 
         $this->base->target = $cTarget;
 
-        $this->setType(json_encode($this->base->type));
+        //$this->setType($this->base->type);
 
-        $this->setOriginal(json_encode($this->base));
+        $this->setOriginal($this->base);
 
     }
 
-    /**
-     * Author requests review with possible endorsement (via overlay journal)
-     * Implements step 3 of scenario 1
-     * https://notify.coar-repositories.org/scenarios/1/3/
-     * @param null $inReplyTo
-     * @return array
-     * @throws COARNotificationException
-     */
-    public function announceReview($inReplyTo = null): array {
-
-        // Special case of step 4 scenario 2
-        // https://notify.coar-repositories.org/scenarios/2/4/
-        if(!empty($inReplyTo)) {
-            $this->base->inReplyTo = $inReplyTo;
-            $this->setInReplyToId($inReplyTo);
-        }
-
-        $this->base->type = ["Announce", "coar-notify:ReviewAction"];
-        $this->setType(json_encode($this->base->type));
-
-        return $this->send();
+    public function getJSON(): string {
+        return json_encode($this->base);
     }
 
-    /**
-     * Author requests review with possible endorsement (via overlay journal)
-     * Implements step 3 of scenario 1
-     * https://notify.coar-repositories.org/scenarios/1/5/
-     * @param null $inReplyTo
-     * @return array
-     * @throws COARNotificationException
-     */
-    public function announceEndorsement($inReplyTo = null): array {
-        // Special case of step 6 scenario 2
-        // https://notify.coar-repositories.org/scenarios/2/4/
-        if(!empty($inReplyTo)) {
-            $this->base->inReplyTo = $inReplyTo;
-            $this->setInReplyToId($inReplyTo);
-        }
-
-        $this->base->type = ["Announce", "coar-notify:EndorsementAction"];
-        $this->setType(json_encode($this->base->type));
-
-        return $this->send();
-    }
-
-
-    /**
-     * Author requests review with possible endorsement (via repository)
-     * Implements step 3 of scenario 2
-     * https://notify.coar-repositories.org/scenarios/2/2/
-     * @return array
-     * @throws COARNotificationException
-     */
-    public function requestReview(): array {
-        $this->base->type = ["Offer", "coar-notify:ReviewAction"];
-        $this->setType(json_encode($this->base->type));
-
-        return $this->send();
-    }
-
-    /**
-     * todo Handle send HTTP errors
-     */
-    public function send(): array {
-        // create curl resource
-        $ch = curl_init();
-        $headers = [];
-
-        // set url
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, $this->timeout);
-        //curl_setopt($ch, CURLOPT_TIMEOUT, 5); //timeout in seconds
-        curl_setopt($ch, CURLOPT_URL, $this->base->target->getInbox());
-        curl_setopt($ch, CURLOPT_USERAGENT, $this->user_agent);
-        curl_setopt($ch, CURLOPT_POST, 1);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, array('Content-Type:application/ld+json'));
-        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($this->base));
-        curl_setopt($ch, CURLOPT_HEADERFUNCTION,
-            function($curl, $header) use (&$headers)
-            {
-                $len = strlen($header);
-                $header = explode(':', $header, 2);
-                if (count($header) < 2) // ignore invalid headers
-                    return $len;
-
-                $headers[strtolower(trim($header[0]))][] = trim($header[1]);
-
-                return $len;
-            }
-        );
-
-        // Send request.
-        $result = curl_exec($ch);
-        $httpcode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
-
-        $this->setStatus($httpcode);
-
-        $this->log->info($this->base->target->getInbox());
-        $this->log->info($httpcode);
-        $this->log->info(print_r($headers, true));
-        $this->log->info($result);
-
-        return [$httpcode, $result];
-
+    public function getTargetURL(): string {
+        return $this->base->target->getInbox();
     }
 
 }

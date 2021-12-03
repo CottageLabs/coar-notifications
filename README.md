@@ -1,8 +1,8 @@
-# Coar Notification Inbox and Client
+# Coar Notification Manager
 
-This is a [COAR Notifications](https://notify.coar-repositories.org/) (CNs) inbox written in PHP 7.4.25
-to work as a [Composer](https://getcomposer.org/) package. It uses [Doctrine](https://www.doctrine-project.org/) for persistence
-into a MySQL/MariaDB database, [Monolog](https://github.com/Seldaek/monolog) for logging and
+This is a [COAR Notifications](https://notify.coar-repositories.org/) (CNs) Manager that can both act as an inbox and
+send notifications written in PHP 7.4. It uses [Doctrine](https://www.doctrine-project.org/) for persistence in a 
+database, [Monolog](https://github.com/Seldaek/monolog) for logging and
 [ramsey/uuid](https://github.com/ramsey/uuid) to generate v4 UUIDs.
 
 CNs are [Linked Data Notifications](https://www.w3.org/TR/2017/REC-ldn-20170502/) that
@@ -36,7 +36,9 @@ There are a few of configuration parameters that can be passed to `COARNotificat
 
 In your PHP file do:
 
-``$coarNotificationInbox = new COARNotificationInbox($db_user='my-user', $db_password='my-secret-pw');``
+```php
+$coarNotificationInbox = new COARNotificationInbox($db_user='my-user', $db_password='my-secret-pw');
+```
 
 ### Inbox
 The inbox is now live and will receive COAR Notifications.
@@ -52,7 +54,7 @@ This is because outbound notifications are saved to the same database table as d
 
 Before creating an OutboundNotification object the necessary ActivityStreams parts are created in isolation:
 
-```
+```php
 $actor = new COARNotificationActor("actorId", "actorName", "Person");
 
 $object = new COARNotificationObject("https://overlay-journal.com/reviews/000001/00001",
