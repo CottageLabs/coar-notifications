@@ -170,7 +170,7 @@ class COARNotificationURL {
     }
 
     /**
-     * @param string $name
+     * @param string $mediaType
      */
     public function setMediaType(string $mediaType): void
     {
@@ -205,7 +205,7 @@ class COARNotificationContext extends COARNotificationObject {
     }
 
     /**
-     * @return string
+     * @return COARNotificationURL
      */
     public function getUrl(): COARNotificationURL
     {
@@ -213,7 +213,7 @@ class COARNotificationContext extends COARNotificationObject {
     }
 
     /**
-     * @param string $url
+     * @param COARNotificationURL $url
      */
     public function setUrl(COARNotificationURL $url): void
     {

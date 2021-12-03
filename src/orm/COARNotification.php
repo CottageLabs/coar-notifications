@@ -63,7 +63,7 @@ class COARNotification {
     /**
      * @ORM\Column(type="integer")
      */
-    private $status;
+    private int $status;
 
     /**
      * @ORM\Column(type="datetime", nullable=false)
@@ -74,7 +74,7 @@ class COARNotification {
     /**
      * @ORM\Column(type="json")
      */
-     private $original;
+     private string $original;
 
     /**
      */
@@ -85,17 +85,9 @@ class COARNotification {
     }
 
     /**
-     * @return mixed
-     */
-    public function getOriginal()
-    {
-        return $this->original;
-    }
-
-    /**
      * @param mixed $original
      */
-    public function setOriginal(string $original): void
+    public function setOriginal($original): void
     {
         $this->original = json_encode($original);
     }
@@ -116,27 +108,11 @@ class COARNotification {
     }
 
     /**
-     * @return mixed
-     */
-    public function getStatus()
-    {
-        return $this->status;
-    }
-
-    /**
      * @param mixed $status
      */
     public function setStatus($status): void
     {
         $this->status = $status;
-    }
-
-    /**
-     * @return string
-     */
-    public function getInReplyToId(): string
-    {
-        return $this->inReplyToId;
     }
 
     /**
@@ -149,27 +125,11 @@ class COARNotification {
     }
 
     /**
-     * @return string
-     */
-    public function getFromId(): string
-    {
-        return $this->fromId;
-    }
-
-    /**
      * @param string $fromId
      */
     public function setFromId(string $fromId): void
     {
         $this->fromId = $fromId;
-    }
-
-    /**
-     * @return string
-     */
-    public function getToId(): string
-    {
-        return $this->toId;
     }
 
     /**
@@ -206,7 +166,7 @@ class COARNotification {
     private function validateType($type):void {
         if($type === "")
             throw new COARNotificationException("Type can not be null.");
-        else if(count(array_diff(array_map('strtolower', json_decode($type)), ACTIVITIES)) === count(json_decode($type))) {
+        else if(count(array_diff(array_map('strtolower', $type), ACTIVITIES)) === count($type)) {
             //!in_array(strtolower($type), ACTIVITIES)) {
             $this->log->warning("(UId: '" . $this->getId() . "') Type '$type' is not an Activity Stream 2.0 Activity Type.");
 
@@ -237,7 +197,7 @@ class COARNotification {
     }
 
     /**
-     * @param string $type
+     * @param array $type
      * @throws COARNotificationException
      */
     public function setType(array $type): void
@@ -260,14 +220,6 @@ class COARNotification {
         return $this->timestamp;
     }
 
-    /**
-     * @param mixed $timestamp
-     */
-    public function setTimestamp($timestamp): void
-    {
-        $this->timestamp = $timestamp;
-    }
-
 }
 
 /**
@@ -278,18 +230,17 @@ class OutboundCOARNotification extends COARNotification {
 
     protected object $base;
     private Logger $log;
-    private int $timeout;
-    private string $user_agent;
 
-    public function __construct(Logger $logger, string $id, string $inbox_url, int $timeout, string $user_agent,
-                                COARNotificationActor $cActor, COARNotificationObject $cObject,
+    /**
+     * @throws Exception
+     */
+    public function __construct(Logger                  $logger, string $id, string $inbox_url,
+                                COARNotificationActor   $cActor, COARNotificationObject $cObject,
                                 COARNotificationContext $cContext, COARNotificationTarget $cTarget)
     {
         parent::__construct($logger);
 
         $this->log = $logger;
-        $this->timeout = $timeout;
-        $this->user_agent = $user_agent;
 
         $this->base = new stdClass();
         $this->base->{'@context'} = ["https://www.w3.org/ns/activitystreams", "http://purl.org/coar/notify"];

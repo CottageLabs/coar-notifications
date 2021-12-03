@@ -1,8 +1,9 @@
 <?php
 
+use Doctrine\DBAL\Connection;
 use Doctrine\ORM\EntityManager;
+use Doctrine\ORM\ORMException;
 use Doctrine\ORM\Tools\Setup;
-use Monolog\Handler\RotatingFileHandler;
 use Monolog\Logger;
 
 require_once __DIR__ . '/orm/COARNotification.php';
@@ -54,14 +55,17 @@ class COARNotificationManager
 
     /**
      * @throws COARNotificationException
-     * @throws \Doctrine\ORM\ORMException
+     * @throws ORMException
      */
-    public function __construct($db_user, $db_password, $db_host='127.0.0.1', $db_name='coar_inbox', $id=null,
-                                $inbox_url=null, $accepted_formats=array('application/ld+json'),
-                                $log_level=Logger::DEBUG,  $timeout=5, $user_agent='PHP Coar notify library')
+    public function __construct($db_conn, Logger $logger=null, string $id=null, string $inbox_url=null,
+                                $accepted_formats=array('application/ld+json'),
+                                $timeout=5, $user_agent='PHP Coar notify library')
     {
-        if(!(isset($db_user) && isset($db_password)))
-            throw new COARNotificationException('A database username and a password is required.');
+        if(!(is_array($db_conn) || $db_conn instanceof Connection))
+            throw new COARNotificationNoDatabaseException('A database username and a password is required.');
+
+        if(isset($logger))
+            $this->logger = $logger;
 
         $this->id = $id ?? $_SERVER['SERVER_NAME'];
         $this->inbox_url = $inbox_url ?? $_SERVER['PHP_SELF'];
@@ -75,28 +79,21 @@ class COARNotificationManager
         $this->timeout = $timeout;
         $this->user_agent = $user_agent;
 
-        $this->logger = new Logger('NotifyCOARLogger');
-        $this->logger->pushHandler(new RotatingFileHandler(__DIR__ . '/../log/NotifyCOARLogger.log',
-            0, $log_level, true, 0664));
-
         $config = Setup::createAnnotationMetadataConfiguration(array(__DIR__."/src/orm"),
             true, null, null, false);
-        $conn = array('host'     => $db_host,
-            'driver'   => 'pdo_mysql',
-            'user'     => $db_user,
-            'password' => $db_password,
-            'dbname'   => $db_name,
-        );
 
-        $this->entityManager = EntityManager::create($conn, $config);
+        $this->entityManager = EntityManager::create($db_conn, $config);
 
         // Verifying database connection
         try {
             $this->entityManager->getConnection()->connect();
-            $this->logger->debug("Database connection verified.");
+
+            if(isset($this->logger))
+                $this->logger->debug("Database connection verified.");
             $this->connected = true;
-        } catch (\Exception $e) {
-            $this->logger->error("Couldn't establish a database connection: " . $e);
+        } catch (Exception $e) {
+            if(isset($this->logger))
+                $this->logger->error("Couldn't establish a database connection: " . $e);
             return;
         }
 
@@ -123,7 +120,8 @@ class COARNotificationManager
                 // Could be followed by a 'profile' but that's not actioned on
                 // https://datatracker.ietf.org/doc/html/rfc6906
 
-                $this->logger->debug('Received a ld+json POST request.');
+                if(isset($this->logger))
+                    $this->logger->debug('Received a ld+json POST request.');
 
                 if(!$this->connected)
                     throw new COARNotificationNoDatabaseException();
@@ -134,15 +132,15 @@ class COARNotificationManager
                 // This is a computationally expensive operation that should be done
                 // at a later stage.
 
-                $notification_json = null;
-
                 try {
                     $notification_json = json_decode(
                         file_get_contents('php://input'), true, 512,
                         JSON_THROW_ON_ERROR);
                 } catch (JsonException $exception) {
-                    $this->logger->error("Syntax error: Badly formed JSON in payload.");
-                    $this->logger->debug($exception->getTraceAsString());
+                    if(isset($this->logger)) {
+                        $this->logger->error("Syntax error: Badly formed JSON in payload.");
+                        $this->logger->debug($exception->getTraceAsString());
+                    }
                     http_response_code(400);
                     return;
                 }
@@ -150,9 +148,11 @@ class COARNotificationManager
                 try {
                     validate_notification($notification_json);
                 } catch (COARNotificationException $exception) {
-                    $this->logger->error("Invalid notification: " . $exception->getMessage());
-                    $this->logger->debug($exception->getTraceAsString());
-                    $this->logger->debug((print_r($notification_json, true)));
+                    if(isset($this->logger)) {
+                        $this->logger->error("Invalid notification: " . $exception->getMessage());
+                        $this->logger->debug($exception->getTraceAsString());
+                        $this->logger->debug((print_r($notification_json, true)));
+                    }
                     http_response_code(422);
                     return;
                 }
@@ -163,12 +163,17 @@ class COARNotificationManager
                     $notification->setId($notification_json['id'] ?? '');
                     $notification->setFromId($notification_json['origin']['id']);
                     $notification->setToId($notification_json['target']['id']);
-                    $notification->setType(json_encode($notification_json['type']) ?? '');
-                    $notification->setOriginal(json_encode($notification_json));
+
+                    if($notification_json['type'])
+                        $notification->setType($notification_json['type']);
+
+                    $notification->setOriginal($notification_json);
                     $notification->setStatus(201);
-                } catch (COARNotificationException $exception) {
-                    $this->logger->error($exception->getMessage());
-                    $this->logger->debug($exception->getTraceAsString());
+                } catch (COARNotificationException | Exception $exception) {
+                    if(isset($this->logger)) {
+                        $this->logger->error($exception->getMessage());
+                        $this->logger->debug($exception->getTraceAsString());
+                    }
                     http_response_code(422);
                     return;
                 }
@@ -177,12 +182,15 @@ class COARNotificationManager
                 try {
                     $this->entityManager->persist($notification);
                     $this->entityManager->flush();
-                    $this->logger->info("Wrote inbound notification (ID: " . $notification->getId() . ") to database.");
+                    if(isset($this->logger))
+                        $this->logger->info("Wrote inbound notification (ID: " . $notification->getId() . ") to database.");
                 } catch (Exception $exception) {
                     // Trouble catching PDOExceptions
                     //if($exception->getCode() == 1062) {
-                    $this->logger->error($exception->getMessage());
-                    $this->logger->debug($exception->getTraceAsString());
+                    if(isset($this->logger)) {
+                        $this->logger->error($exception->getMessage());
+                        $this->logger->debug($exception->getTraceAsString());
+                    }
 
                     http_response_code(422);
                     return;
@@ -194,18 +202,22 @@ class COARNotificationManager
                 http_response_code(201);
 
             } else {
-                $this->logger->debug("415 Unsupported Media Type: received a POST but content type '"
-                    . $_SERVER["CONTENT_TYPE"] . "' not an accepted format.");
+                if(isset($this->logger))
+                    $this->logger->debug("415 Unsupported Media Type: received a POST but content type '"
+                        . $_SERVER["CONTENT_TYPE"] . "' not an accepted format.");
                 http_response_code(415);
             }
 
         }
     }
 
+    /**
+     * @throws Exception
+     */
     public function createOutboundNotification($cNActor, $cObject, $cContext, $cTarget): OutboundCOARNotification
     {
-        return new OutboundCOARNotification($this->logger, $this->id, $this->inbox_url, $this->timeout,
-            $this->user_agent, $cNActor, $cObject, $cContext, $cTarget);
+        return new OutboundCOARNotification($this->logger, $this->id, $this->inbox_url,
+            $cNActor, $cObject, $cContext, $cTarget);
 
     }
 
@@ -213,9 +225,10 @@ class COARNotificationManager
      * Author requests review with possible endorsement (via overlay journal)
      * Implements step 3 of scenario 1
      * https://notify.coar-repositories.org/scenarios/1/5/
-     * @param null $inReplyTo
-     * @return array
+     * @param OutboundCOARNotification $outboundCOARNotification
+     * @param null $inReplyToId
      * @throws COARNotificationException
+     * @throws COARNotificationNoDatabaseException
      */
     public function announceEndorsement(OutboundCOARNotification $outboundCOARNotification, $inReplyToId = null) {
         if(!$this->connected)
@@ -234,9 +247,10 @@ class COARNotificationManager
      * Author requests review with possible endorsement (via overlay journal)
      * Implements step 3 of scenario 1
      * https://notify.coar-repositories.org/scenarios/1/3/
-     * @param null $inReplyTo
-     * @return array
+     * @param OutboundCOARNotification $outboundCOARNotification
+     * @param null $inReplyToId
      * @throws COARNotificationException
+     * @throws COARNotificationNoDatabaseException
      */
     public function announceReview(OutboundCOARNotification $outboundCOARNotification, $inReplyToId = null) {
         if(!$this->connected)
@@ -257,7 +271,6 @@ class COARNotificationManager
      * Author requests review with possible endorsement (via repository)
      * Implements step 3 of scenario 2
      * https://notify.coar-repositories.org/scenarios/2/2/
-     * @return array
      * @throws COARNotificationException
      */
     public function requestReview(OutboundCOARNotification $outboundCOARNotification) {
@@ -273,7 +286,7 @@ class COARNotificationManager
     /**
      * todo Handle send HTTP errors
      */
-    private function send(OutboundCOARNotification $outboundCOARNotification): array {
+    private function send(OutboundCOARNotification $outboundCOARNotification) {
         // create curl resource
         $ch = curl_init();
         $headers = [];
@@ -308,12 +321,14 @@ class COARNotificationManager
 
         $outboundCOARNotification->setStatus($http_code);
 
-        $this->logger->info($outboundCOARNotification->getTargetURL());
-        $this->logger->info($http_code);
-        $this->logger->info(print_r($headers, true));
-        $this->logger->info($result);
+        if(isset($this->logger)) {
+            $this->logger->info($outboundCOARNotification->getTargetURL());
+            $this->logger->info($http_code);
+            $this->logger->info(print_r($headers, true));
+            $this->logger->info($result);
+        }
 
-        return [$http_code, $result];
+        // return [$http_code, $result];
 
     }
 
