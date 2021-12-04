@@ -179,24 +179,8 @@ class COARNotificationManager
                 }
 
                 // Committing to database
-                try {
-                    $this->entityManager->persist($notification);
-                    $this->entityManager->flush();
-                    if(isset($this->logger))
-                        $this->logger->info("Wrote inbound notification (ID: " . $notification->getId() . ") to database.");
-                } catch (Exception $exception) {
-                    // Trouble catching PDOExceptions
-                    //if($exception->getCode() == 1062) {
-                    if(isset($this->logger)) {
-                        $this->logger->error($exception->getMessage());
-                        $this->logger->debug($exception->getTraceAsString());
-                    }
 
-                    http_response_code(422);
-                    return;
-                    //}
-
-                }
+                $this->persistNotification($notification);
 
                 //header("Location: " . $config['inbox_url']);
                 http_response_code(201);
@@ -240,7 +224,7 @@ class COARNotificationManager
         $outboundCOARNotification->setType(["Announce", "coar-notify:EndorsementAction"]);
 
         $this->send($outboundCOARNotification);
-        $this->persistOutboundNotification($outboundCOARNotification);
+        $this->persistNotification($outboundCOARNotification);
     }
 
     /**
@@ -264,7 +248,7 @@ class COARNotificationManager
         $outboundCOARNotification->setType(["Announce", "coar-notify:ReviewAction"]);
 
         $this->send($outboundCOARNotification);
-        $this->persistOutboundNotification($outboundCOARNotification);
+        $this->persistNotification($outboundCOARNotification);
     }
 
     /**
@@ -280,7 +264,7 @@ class COARNotificationManager
         $outboundCOARNotification->setType(["Offer", "coar-notify:ReviewAction"]);
 
         $this->send($outboundCOARNotification);
-        $this->persistOutboundNotification($outboundCOARNotification);
+        $this->persistNotification($outboundCOARNotification);
     }
 
     /**
@@ -340,19 +324,38 @@ class COARNotificationManager
 
     }
 
-    private function persistOutboundNotification($notification) {
+    private function persistNotification($notification) {
         try {
             $this->entityManager->persist($notification);
             $this->entityManager->flush();
-            $this->logger->info("Wrote outbound notification (ID: " . $notification->getId() . ") to database.");
+
+            if(isset($this->logger)) {
+                $msg = 'Wrote ';
+
+                if($notification->getStatus() < 200 || $notification->getStatus() > 299)
+                    $msg .= "failed ";
+
+                if ($notification instanceof OutboundCOARNotification)
+                    $msg .= "outbound";
+                else
+                    $msg .= "inbound";
+
+                $this->logger->info($msg . " notification (ID: " . $notification->getId() . ") to database.");
+            }
         }
         catch (Exception $exception) {
-            // Trouble catching PDOExceptions
-            //if($exception->getCode() == 1062) {
-            $this->logger->error($exception->getMessage());
-            $this->logger->debug($exception->getTraceAsString());
-            return;
-            //}
+            if(isset($this->logger)) {
+                // Trouble catching PDOExceptions
+                //if($exception->getCode() == 1062) {
+                $this->logger->error($exception->getMessage());
+                $this->logger->debug($exception->getTraceAsString());
+                //}
+            }
+
+            // If an inbound notification can't be written to database
+            // then we issue a 422
+            if(get_class($notification) != "OutboundCOARNotification")
+                http_response_code(422);
 
         }
     }

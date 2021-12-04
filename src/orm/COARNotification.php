@@ -117,6 +117,14 @@ class COARNotification {
     }
 
     /**
+     * @return int
+     */
+    public function getStatus(): int
+    {
+        return $this->status;
+    }
+
+    /**
      * @param mixed $inReplyToId
      */
     public function setInReplyToId($inReplyToId): void
