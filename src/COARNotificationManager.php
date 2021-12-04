@@ -80,7 +80,7 @@ class COARNotificationManager
         $this->user_agent = $user_agent;
 
         $config = Setup::createAnnotationMetadataConfiguration(array(__DIR__."/src/orm"),
-            true, null, null, false);
+            false, null, null, false);
 
         $this->entityManager = EntityManager::create($conn, $config);
 
@@ -92,13 +92,21 @@ class COARNotificationManager
                 $this->logger->debug("Database connection verified.");
             $this->connected = true;
         } catch (Exception $e) {
+            // Printing this exception if logger is not available as this is a fatal
+            // initialisation error
             if(isset($this->logger))
                 $this->logger->error("Couldn't establish a database connection: " . $e);
+            else
+                print("Couldn't establish a database connection: " . $e);
             return;
         }
 
         //$this->do_response();
 
+    }
+
+    public function __toString(): string {
+        return static::class . $this->id;
     }
 
     /**
