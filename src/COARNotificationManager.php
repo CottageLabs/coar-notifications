@@ -57,11 +57,11 @@ class COARNotificationManager
      * @throws COARNotificationException
      * @throws ORMException
      */
-    public function __construct($db_conn, Logger $logger=null, string $id=null, string $inbox_url=null,
+    public function __construct($conn, Logger $logger=null, string $id=null, string $inbox_url=null,
                                 $accepted_formats=array('application/ld+json'),
-                                $timeout=5, $user_agent='PHP Coar notify library')
+                                $timeout=5, $user_agent='PHP COAR Notification Manager')
     {
-        if(!(is_array($db_conn) || $db_conn instanceof Connection))
+        if(!(is_array($conn) || $conn instanceof Connection))
             throw new COARNotificationNoDatabaseException('Either a database connection or a database configuration.');
 
         if(isset($logger))
@@ -82,7 +82,7 @@ class COARNotificationManager
         $config = Setup::createAnnotationMetadataConfiguration(array(__DIR__."/src/orm"),
             true, null, null, false);
 
-        $this->entityManager = EntityManager::create($db_conn, $config);
+        $this->entityManager = EntityManager::create($conn, $config);
 
         // Verifying database connection
         try {
@@ -316,19 +316,27 @@ class COARNotificationManager
 
         // Send request.
         $result = curl_exec($ch);
+        $error_no = curl_errno($ch);
         $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         curl_close($ch);
 
         $outboundCOARNotification->setStatus($http_code);
 
-        if(isset($this->logger)) {
-            $this->logger->info($outboundCOARNotification->getTargetURL());
-            $this->logger->info($http_code);
-            $this->logger->info(print_r($headers, true));
-            $this->logger->info($result);
-        }
+        if(isset($this->logger) && $error_no > 0) {
+            // For a list of cURL errors see:
+            // https://curl.se/libcurl/c/libcurl-errors.html
 
-        // return [$http_code, $result];
+            $msg = "Outbound notification (ID: " . $outboundCOARNotification->getId() . ") could not be sent.";
+            // Timed out?
+            if($error_no === 7)
+                $msg .= " Couldn't connect to " . $outboundCOARNotification->getTargetURL();
+            else if($error_no === 28)
+                $msg .= " Timed out.";
+            else
+                $msg .= " cURL error no: " . $error_no;
+
+            $this->logger->error($msg);
+        }
 
     }
 

@@ -2,8 +2,9 @@
 
 This is a [COAR Notifications](https://notify.coar-repositories.org/) (CNs) Manager that can both act as an inbox and
 send notifications written in PHP 7.4. It uses [Doctrine](https://www.doctrine-project.org/) for persistence in a 
-database, [Monolog](https://github.com/Seldaek/monolog) for logging and
-[ramsey/uuid](https://github.com/ramsey/uuid) to generate v4 UUIDs.
+database, [Monolog](https://github.com/Seldaek/monolog) for logging,
+[ramsey/uuid](https://github.com/ramsey/uuid) to generate v4 UUIDs and PHP-Curl to send notifications (see 
+`composer.json` for version numbers).
 
 CNs are [Linked Data Notifications](https://www.w3.org/TR/2017/REC-ldn-20170502/) that
 have a [Activity Streams 2.0](https://www.w3.org/TR/activitystreams-core/) like structure.
@@ -19,26 +20,35 @@ Easiest way to install is to use Composer.
 
 To set up the inbox you need a MySQL/MariaDB database.
 
-Create the database in MySQL/MariaDB (by default `coar_inbox`) and then run: `$ php vendor/bin/doctrine orm:schema-tool:create` to create the database schema.
-Finally run a web server, For instance: `$ php -S localhost:8080 `.
-
-There are a few of configuration parameters that can be passed to `COARNotificationInbox`:
-
-| Variable           | Description  | Default value    |
-| -----              |    ----      |             --- |
-| `id`               | the system's URL        | `$_SERVER['SERVER_NAME']`      |
-| `inbox_url`        | the inbox's URL         | `$_SERVER['PHP_SELF']`         |
-| `accepted_formats` | accepted mime-type formats    |  'application/ld+json'        |
-| `log_level`        | log level as a Monolog constant (see [here](https://github.com/Seldaek/monolog/blob/main/doc/01-usage.md]))         | INFO         |
-| Client settings |
-| `timeout`  | for how long the client attempts to post a notification         | 5         |
-| `user_agent`       | the client's user agent used to identify the client         | 'PHP Coar Notification Client'        |
+Create the database table by  running: `$ php vendor/bin/doctrine orm:schema-tool:create` to create the database
+schema and run a web server, for instance: `$ php -S localhost:8080 `.
 
 In your PHP file do:
 
 ```php
-$coarNotificationInbox = new COARNotificationInbox($db_user='my-user', $db_password='my-secret-pw');
+$conn = array('host'     => '127.0.0.1',
+    'driver'   => 'pdo_mysql',
+    'user'     => 'root',
+    'password' => 'my-secret-pw',
+    'dbname'   => 'coar_notifications',
+);
+
+$coarNotificationManager = new COARNotificationManager($conn);
 ```
+
+There are a few configuration parameters that can be passed to `COARNotificationManager`:
+
+| Variable           | Description                                                                                                                                                                                              | Default value                   |
+|--------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|---------------------------------|
+| `conn`             | either [DBAL connnection parameters in an array](https://www.doctrine-project.org/projects/doctrine-dbal/en/latest/reference/configuration.html#configuration) or an already established DBAL Connection |                                 |
+| `logger`           | A Monolog logger object                                                                                                                                                                                  |                                 |
+| `id`               | the system's URL                                                                                                                                                                                         | `$_SERVER['SERVER_NAME']`       |
+| `inbox_url`        | the inbox's URL                                                                                                                                                                                          | `$_SERVER['PHP_SELF']`          |
+| `accepted_formats` | an array of accepted mime-type formats                                                                                                                                                                   | ['application/ld+json']         |
+| Client settings    |
+| `timeout`          | for how long the client attempts to post a notification, in seconds                                                                                                                                      | 5                               |
+| `user_agent`       | the client's user agent used to identify the client                                                                                                                                                      | 'PHP COAR Notification Manager' |
+
 
 ### Inbox
 The inbox is now live and will receive COAR Notifications.
@@ -52,9 +62,19 @@ notifications.
 In order to send notifications you first need to initialize a `$coarNotificationInbox` object.
 This is because outbound notifications are saved to the same database table as described above.
 
-Before creating an OutboundNotification object the necessary ActivityStreams parts are created in isolation:
+Before creating an OutboundNotification object the necessary parts are created in isolation:
 
 ```php
+$conn = array('host'     => '127.0.0.1',
+    'driver'   => 'pdo_mysql',
+    'user'     => 'root',
+    'password' => 'my-secret-pw',
+    'dbname'   => 'coar_notifications',
+);
+
+$coarNotificationManager = new COARNotificationManager($conn);
+
+// This represents the entity sending the notification
 $actor = new COARNotificationActor("actorId", "actorName", "Person");
 
 $object = new COARNotificationObject("https://overlay-journal.com/reviews/000001/00001",
@@ -71,7 +91,9 @@ $context = new COARNotificationContext("https://research-organisation.org/reposi
 $target = new COARNotificationTarget("https://research-organisation.org/repository",
 "http://localhost:81/post");
 
-$notification = new OutboundCOARNotification($actor, $object, $context, $target);
+$notification = $coarNotificationManager->createOutboundNotification($actor, $object, $context, $target);
+
+$coarNotificationManager->requestReview($notification);
 ```
 
 Put together, these POPOs constitute an almost fully formed COAR Notification, only thing left is to call one of the following:
