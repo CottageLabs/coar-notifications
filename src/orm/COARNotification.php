@@ -177,7 +177,7 @@ class COARNotification {
     /**
      * @throws COARNotificationException
      */
-    private function validateType($type):void {
+    protected function validateType($type):void {
         if($type === "") {
             $msg = "(UId: '" . $this->getId() . "') Type can not be null.";
             if (isset($this->logger))
@@ -223,7 +223,6 @@ class COARNotification {
     public function setType(array $type): void
     {
         $this->validateType($type);
-        $this->base->type = $type;
         $this->type = json_encode($type);
     }
 
@@ -302,6 +301,12 @@ class OutboundCOARNotification extends COARNotification {
 
         $this->setOriginal($this->base);
 
+    }
+
+    public function setType(array $type): void
+    {
+        $this->validateType($type);
+        $this->base->type = $type;
     }
 
     public function getJSON(): string {
