@@ -1,8 +1,9 @@
 # COAR Notification Manager
 
 This is a [COAR Notifications](https://notify.coar-repositories.org/) (CNs) Manager that can both act as an inbox and
-send notifications written in PHP 7.4. It uses [Doctrine](https://www.doctrine-project.org/) for persistence in a 
-database, [Monolog](https://github.com/Seldaek/monolog) for logging,
+send notifications written in PHP 7.4 with [cURL](https://www.php.net/manual/en/book.curl.php) and
+[JSON](https://www.php.net/manual/en/book.json.php). It uses [Doctrine](https://www.doctrine-project.org/) for 
+persistence in a database, [Monolog](https://github.com/Seldaek/monolog) for logging,
 [ramsey/uuid](https://github.com/ramsey/uuid) to generate v4 UUIDs and PHP-Curl to send notifications (see 
 `composer.json` for version numbers).
 

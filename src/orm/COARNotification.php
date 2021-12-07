@@ -105,6 +105,8 @@ class COARNotification {
             $id = "urn:uuid:" . Uuid::uuid4()->serialize();
         }
 
+        $this->validateId($id);
+
         $this->id = $id;
     }
 

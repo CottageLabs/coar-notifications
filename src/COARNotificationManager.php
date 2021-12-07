@@ -13,7 +13,9 @@ require_once __DIR__ . '/orm/COARNotificationException.php';
 // done by Amu Guy who wrote the spec.
 
 /**
- *
+ *  This validation functions ensures that there is a '@context' property that includes
+ *  ActivityStreams 2.0 and COAR Notify.
+ *  Also checks for the existence of a 'id' property.
  *
  * @throws COARNotificationException
  */
@@ -54,6 +56,8 @@ class COARNotificationManager
     private bool $connected = false;
 
     /**
+     * A COARNotificationManager can either receive or send COAR Notifications.
+     * Only required parameter is either database connection parameters or a connection.
      * @throws COARNotificationException
      * @throws ORMException
      */
@@ -62,7 +66,8 @@ class COARNotificationManager
                                 $timeout=5, $user_agent='PHP COAR Notification Manager')
     {
         if(!(is_array($conn) || $conn instanceof Connection))
-            throw new COARNotificationNoDatabaseException('Either a database connection or a database configuration.');
+            throw new COARNotificationNoDatabaseException('Either a database connection or' .
+                'a database configuration is required.');
 
         if(isset($logger))
             $this->logger = $logger;
@@ -111,6 +116,7 @@ class COARNotificationManager
     }
 
     /**
+     * Handles incoming requests.
      * @throws COARNotificationException
      */
     public function do_response() {
