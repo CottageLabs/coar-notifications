@@ -8,6 +8,7 @@
       "email": "hrafn@cottagelabs.com"
     }
   ],
+  "license": "MIT",
   "require": {
     "php": ">=7.4",
     "doctrine/orm": "^2.6.2",
