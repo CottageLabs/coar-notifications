@@ -73,7 +73,7 @@ class COARNotificationManager
             $this->logger = $logger;
 
         $this->id = $id ?? $_SERVER['SERVER_NAME'];
-        $this->inbox_url = $inbox_url ?? $_SERVER['PHP_SELF'];
+        $this->inbox_url = $inbox_url ?? $_SERVER['HTTP_HOST'] . $_SERVER['PHP_SELF'];
 
         //if(!is_array($accepted_formats))
         //    throw new InvalidArgumentException("'accepted_formats' argument must be an array.");
