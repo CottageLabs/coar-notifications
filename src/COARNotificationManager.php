@@ -57,8 +57,8 @@ class COARNotificationManager
      * @throws COARNotificationException
      * @throws ORMException
      */
-    public function __construct($conn, Logger $logger=null, string $id=null, string $inbox_url=null,
-                                $accepted_formats=array('application/ld+json'),
+    public function __construct($conn, $start_inbox=True, Logger $logger=null, string $id=null, string $inbox_url=null,
+                                //$accepted_formats=array('application/ld+json'),
                                 $timeout=5, $user_agent='PHP COAR Notification Manager')
     {
         if(!(is_array($conn) || $conn instanceof Connection))
@@ -70,10 +70,10 @@ class COARNotificationManager
         $this->id = $id ?? $_SERVER['SERVER_NAME'];
         $this->inbox_url = $inbox_url ?? $_SERVER['PHP_SELF'];
 
-        if(!is_array($accepted_formats))
-            throw new InvalidArgumentException("'accepted_formats' argument must be an array.");
+        //if(!is_array($accepted_formats))
+        //    throw new InvalidArgumentException("'accepted_formats' argument must be an array.");
 
-        $this->accepted_formats = $accepted_formats;
+        $this->accepted_formats = array('application/ld+json'); //$accepted_formats;
 
         // Timeout and user agent are only relevant for outbound notifications
         $this->timeout = $timeout;
@@ -101,7 +101,8 @@ class COARNotificationManager
             return;
         }
 
-        //$this->do_response();
+        if($start_inbox)
+            $this->do_response();
 
     }
 
