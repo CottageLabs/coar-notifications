@@ -118,14 +118,9 @@ class COARNotificationManager
 
     }
 
-    public function get_inbound_notifications(): \Doctrine\Persistence\ObjectRepository
+    public function get_notifications(): \Doctrine\Persistence\ObjectRepository
     {
         return $this->entityManager->getRepository(COARNotification::class);
-    }
-
-    public function get_outbound_notifications(): \Doctrine\Persistence\ObjectRepository
-    {
-        return $this->entityManager->getRepository(OutboundCOARNotification::class);
     }
 
     public function __toString(): string {

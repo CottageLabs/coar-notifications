@@ -127,6 +127,12 @@ a PHP development server container with a MariaDB container. Just run:
 
 `$ docker-compose up`
 
+At `http://localhost/` there is an interactive form you can use to semi-manually create a COAR Notification. Note
+that three fields; `type`, `url type` and `object type` expect comma separated vallues that will be split
+into an array of strings.
+
+At `http://localhost/inbox.php` notifications sent or received will be listed by id and timestamp.
+
 ## License
 Copyright © 2021 <copyright holders>
 
