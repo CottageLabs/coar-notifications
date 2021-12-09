@@ -1,5 +1,8 @@
 <?php
+namespace cottagelabs\coarNotifications\orm;
 
+use Exception;
+use Throwable;
 
 class COARNotificationException extends Exception {}
 

@@ -1,9 +1,16 @@
 <?php
+namespace cottagelabs\coarNotifications;
 
+use cottagelabs\coarNotifications\orm\COARNotification;
+use cottagelabs\coarNotifications\orm\COARNotificationException;
+use cottagelabs\coarNotifications\orm\COARNotificationNoDatabaseException;
+use cottagelabs\coarNotifications\orm\OutboundCOARNotification;
 use Doctrine\DBAL\Connection;
 use Doctrine\ORM\EntityManager;
 use Doctrine\ORM\ORMException;
 use Doctrine\ORM\Tools\Setup;
+use Exception;
+use JsonException;
 use Monolog\Logger;
 
 require_once __DIR__ . '/orm/COARNotification.php';
@@ -73,7 +80,7 @@ class COARNotificationManager
             $this->logger = $logger;
 
         $this->id = $id ?? $_SERVER['SERVER_NAME'];
-        $this->inbox_url = $inbox_url ?? $_SERVER['PHP_SELF'];
+        $this->inbox_url = $inbox_url ?? $_SERVER['HTTP_HOST'] . $_SERVER['PHP_SELF'];
 
         //if(!is_array($accepted_formats))
         //    throw new InvalidArgumentException("'accepted_formats' argument must be an array.");
@@ -109,6 +116,16 @@ class COARNotificationManager
         if($start_inbox)
             $this->do_response();
 
+    }
+
+    public function get_inbound_notifications(): \Doctrine\Persistence\ObjectRepository
+    {
+        return $this->entityManager->getRepository(COARNotification::class);
+    }
+
+    public function get_outbound_notifications(): \Doctrine\Persistence\ObjectRepository
+    {
+        return $this->entityManager->getRepository(OutboundCOARNotification::class);
     }
 
     public function __toString(): string {

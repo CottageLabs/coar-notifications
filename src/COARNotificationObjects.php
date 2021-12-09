@@ -1,4 +1,8 @@
 <?php
+namespace cottagelabs\coarNotifications;
+
+use JsonSerializable;
+use stdClass;
 
 class COARNotificationActor implements JsonSerializable
 {

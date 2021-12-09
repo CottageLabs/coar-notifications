@@ -1,8 +1,15 @@
 <?php
+namespace cottagelabs\coarNotifications\orm;
 
+use cottagelabs\coarNotifications\COARNotificationActor;
+use cottagelabs\coarNotifications\COARNotificationContext;
+use cottagelabs\coarNotifications\COARNotificationObject;
+use cottagelabs\coarNotifications\COARNotificationTarget;
 use Doctrine\ORM\Mapping as ORM;
+use Exception;
 use Monolog\Logger;
 use Ramsey\Uuid\Uuid;
+use stdClass;
 
 require_once 'COARNotificationException.php';
 require_once __DIR__ . "/../COARNotificationObjects.php";
@@ -307,7 +314,7 @@ class OutboundCOARNotification extends COARNotification {
 
     public function setType(array $type): void
     {
-        $this->validateType($type);
+        parent::setType($type);
         $this->base->type = $type;
     }
 
