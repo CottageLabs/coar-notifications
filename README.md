@@ -118,7 +118,7 @@ $coarNotificationManager->announceReview($notification);
 both of which have the optional `$inReplyTo` parameter, or:
 
 ```php
-$notification->requestReview();
+$notification->requestReview($notification);
 ```
 
 ## Development
