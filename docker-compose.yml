@@ -6,7 +6,7 @@ services:
       context: .
     container_name: 'coar_notify_php'
     ports:
-      - "80:8080"
+      - "8060:8080"
 #    volumes:
 #      - ./www:/www
     networks:
@@ -20,8 +20,8 @@ services:
   database:
     image: "mariadb:latest"
     container_name: 'coar_notify_mariadb'
-    ports:
-      - "3306:3306"
+    expose:
+      - "3306"
     volumes:
       - ./data/mysql:/var/lib/mysql
       - ./logs/mysql:/var/log/mysql
