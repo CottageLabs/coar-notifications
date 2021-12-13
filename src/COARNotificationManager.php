@@ -188,8 +188,8 @@ class COARNotificationManager
                 try {
                     $notification = new COARNotification($this->logger);
                     $notification->setId($notification_json['id'] ?? '');
-                    $notification->setFromId($notification_json['origin']['id']);
-                    $notification->setToId($notification_json['target']['id']);
+                    $notification->setFromId($notification_json['origin']['id'] ?? '');
+                    $notification->setToId($notification_json['target']['id'] ?? '');
 
                     if($notification_json['type'])
                         $notification->setType($notification_json['type']);
