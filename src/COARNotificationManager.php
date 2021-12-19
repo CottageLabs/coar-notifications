@@ -132,11 +132,7 @@ class COARNotificationManager
      * @throws COARNotificationException
      */
     public function do_response() {
-        if ($_SERVER['REQUEST_METHOD'] === 'GET')   {
-            http_response_code(403);
-        }
-
-        else if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+        if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
         // See https://www.w3.org/TR/2017/REC-ldn-20170502/#sender
             header("Allow: " . implode(', ', ['POST', 'OPTIONS']));
             header("Accept-Post: " . implode(', ', $this->accepted_formats));
