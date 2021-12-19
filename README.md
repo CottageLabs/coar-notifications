@@ -24,8 +24,10 @@ Easiest way to install is to use Composer.
 
 To set up the inbox you need a MySQL/MariaDB database.
 
-Create the database table by  running: `$ php vendor/bin/doctrine orm:schema-tool:create` to create the database
-schema and run a web server, for instance: `$ php -S localhost:8080 `.
+Create the database schema by creating the file `cli-config.php` in the project's root folder (see
+[Doctrine documentation](https://www.doctrine-project.org/projects/doctrine-orm/en/2.9/reference/configuration.html) 
+and example in the `docker` folder) and running: `$ php vendor/bin/doctrine orm:schema-tool:create` to create the
+database schema and run a web server, for instance: `$ php -S localhost:8080 `.
 
 In your PHP file do:
 
