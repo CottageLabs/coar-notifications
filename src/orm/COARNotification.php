@@ -101,6 +101,14 @@ class COARNotification {
     }
 
     /**
+     * @return string
+     */
+    public function getOriginal(): string
+    {
+        return $this->original;
+    }
+
+    /**
      * Called with parameter when notification is inbound.
      * Called without parameter when notification is outbound.
      * @param string|null $id
