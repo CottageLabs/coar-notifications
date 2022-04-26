@@ -165,7 +165,21 @@ class COARNotification {
     {
         $this->toId = $toId;
     }
+    /**
+     * @return string
+     */
+    public function getFromId(): string
+    {
+        return $this->fromId;
+    }
 
+    /**
+     * @return string
+     */
+    public function getToId(): string
+    {
+        return $this->toId;
+    }
     /**
      * Validates $id argument passed to Notification constructor.
      * It's recommended to be URN:UUID, an HTTP URI may be used.
