@@ -17,7 +17,8 @@
     "ext-pdo": "*",
     "ext-json": "*",
     "ramsey/uuid": "^4.2",
-    "ext-curl": "*"
+    "ext-curl": "*",
+    "doctrine/annotations": "^1.13"
   },
   "autoload": {
     "psr-4": {"cottagelabs\\coarNotifications\\": "src/"}
