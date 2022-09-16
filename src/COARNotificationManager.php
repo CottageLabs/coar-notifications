@@ -382,5 +382,25 @@ class COARNotificationManager
 
         }
     }
-}
 
+    public function removeNotificationById(string $notificationId): void
+    {
+
+        $notificationToRemove = $this->entityManager->getReference(COARNotification::class, $notificationId);
+
+        try {
+            $this->entityManager->remove($notificationToRemove);
+            $this->entityManager->flush();
+
+            if (isset($this->logger)) {
+                $this->logger->info(sprintf("Removing notification (ID: %s) from database.", $notificationId));
+            }
+        } catch (Exception $exception) {
+            if (isset($this->logger)) {
+                $this->logger->error($exception->getMessage());
+                $this->logger->debug($exception->getTraceAsString());
+            }
+        }
+    }
+
+}
