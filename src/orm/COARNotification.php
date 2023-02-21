@@ -101,6 +101,14 @@ class COARNotification {
     }
 
     /**
+     * @return string
+     */
+    public function getOriginal(): string
+    {
+        return $this->original;
+    }
+
+    /**
      * Called with parameter when notification is inbound.
      * Called without parameter when notification is outbound.
      * @param string|null $id
@@ -157,7 +165,21 @@ class COARNotification {
     {
         $this->toId = $toId;
     }
+    /**
+     * @return string
+     */
+    public function getFromId(): string
+    {
+        return $this->fromId;
+    }
 
+    /**
+     * @return string
+     */
+    public function getToId(): string
+    {
+        return $this->toId;
+    }
     /**
      * Validates $id argument passed to Notification constructor.
      * It's recommended to be URN:UUID, an HTTP URI may be used.
