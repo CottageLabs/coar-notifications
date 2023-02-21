@@ -43,7 +43,7 @@ RUN docker-php-ext-install pdo_mysql && \
 
 WORKDIR /var/www
 
-COPY ./docker .
+#COPY ./docker .
 
 RUN composer require cottagelabs/coar-notifications
 

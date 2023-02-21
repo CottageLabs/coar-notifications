@@ -7,16 +7,19 @@ services:
     container_name: 'coar_notify_php'
     ports:
       - "8060:8080"
-#    volumes:
-#      - ./www:/www
+    volumes:
+      - .:/var/www
     networks:
       - coar_notify_network
     depends_on:
       - database
     env_file:
       - docker/mariadb.env
+    #entrypoint:
+    #  ["./docker/entrypoint.sh"]
     entrypoint:
-      ["./entrypoint.sh"]
+      ["php", "-S", "0.0.0.0:8080"]
+      #["tail", "-f", "/dev/null"]
   database:
     image: "mariadb:latest"
     container_name: 'coar_notify_mariadb'
