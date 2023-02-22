@@ -10,6 +10,8 @@ use Doctrine\ORM\EntityManager;
 use Doctrine\ORM\ORMException;
 use Doctrine\ORM\Tools\Setup;
 use Exception;
+use GuzzleHttp\Exception\ConnectException;
+use GuzzleHttp\Exception\RequestException;
 use JsonException;
 use Monolog\Logger;
 
@@ -294,55 +296,48 @@ class COARNotificationManager
      * todo Handle send HTTP errors
      */
     private function send(OutboundCOARNotification $outboundCOARNotification) {
-        // create curl resource
-        $ch = curl_init();
-        $headers = [];
+        $this->logger->debug("Sending notification.");
 
-        // set url
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, $this->timeout);
-        //curl_setopt($ch, CURLOPT_TIMEOUT, 5); //timeout in seconds
-        curl_setopt($ch, CURLOPT_URL, $outboundCOARNotification->getTargetURL());
-        curl_setopt($ch, CURLOPT_USERAGENT, $this->user_agent);
-        curl_setopt($ch, CURLOPT_POST, 1);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, array('Content-Type:application/ld+json'));
-        curl_setopt($ch, CURLOPT_POSTFIELDS, $outboundCOARNotification->getJSON());
-        curl_setopt($ch, CURLOPT_HEADERFUNCTION,
-            function($curl, $header) use (&$headers)
-            {
-                $len = strlen($header);
-                $header = explode(':', $header, 2);
-                if (count($header) < 2) // ignore invalid headers
-                    return $len;
+        // TODO Disable 400-500 HTTP errors being raised ['http_errors' => false]
+        $client = new \GuzzleHttp\Client();
 
-                $headers[strtolower(trim($header[0]))][] = trim($header[1]);
+        try {
+            $res = $client->request('POST', $outboundCOARNotification->getTargetURL(), [
+                'connect_timeout' => $this->timeout,
+                'headers' => ['Content-Type' => 'application/ld+json',
+                    'User-Agent' => $this->user_agent],
+                'body' => $outboundCOARNotification->getJSON(),
+            ]);
 
-                return $len;
+            $outboundCOARNotification->setStatus($res->getStatusCode());
+        }
+        catch (ConnectException | RequestException $e) {
+            // Guzzle will use cURL by default, we can therefore expect a ContextHandler with
+            // cURL error codes
+            $ctx = $e->getHandlerContext();
+            $this->logger->error('Error');
+
+
+            if(in_array('errno', $ctx)) {
+                $error_no = $ctx['errno'];
+                $outboundCOARNotification->setStatus($error_no);
+
+                $msg = "Outbound notification (ID: " . $outboundCOARNotification->getId() . ") could not be sent.";
+                // Timed out?
+                if($error_no === 7)
+                    $msg .= " Couldn't connect to " . $outboundCOARNotification->getTargetURL();
+                else if($error_no === 28)
+                    $msg .= " Timed out.";
+                else
+                    $msg .= " cURL error no: " . $error_no;
+
+                $this->logger->error($msg);
+
             }
-        );
+            else {
+                $this->logger->error($e);
+            }
 
-        // Send request.
-        $result = curl_exec($ch);
-        $error_no = curl_errno($ch);
-        $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
-
-        $outboundCOARNotification->setStatus($http_code);
-
-        if(isset($this->logger) && $error_no > 0) {
-            // For a list of cURL errors see:
-            // https://curl.se/libcurl/c/libcurl-errors.html
-
-            $msg = "Outbound notification (ID: " . $outboundCOARNotification->getId() . ") could not be sent.";
-            // Timed out?
-            if($error_no === 7)
-                $msg .= " Couldn't connect to " . $outboundCOARNotification->getTargetURL();
-            else if($error_no === 28)
-                $msg .= " Timed out.";
-            else
-                $msg .= " cURL error no: " . $error_no;
-
-            $this->logger->error($msg);
         }
 
     }
