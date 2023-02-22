@@ -60,9 +60,14 @@ class COARNotification {
     private string $type;
 
     /**
-     * @ORM\Column(type="integer")
+     * This value can either be 100 <, HTTP Code or < 100, a curl error code, assuming
+     * Guzzle is using the default HTTP handler, curl.     *
+     *
+     * See:
+     * https://curl.se/libcurl/c/libcurl-errors.html
+     * @ORM\Column(type="integer", nullable=true)
      */
-    private int $status;
+    private ?int $status = null;
 
     /**
      * @ORM\Column(type="datetime", nullable=false)
@@ -128,7 +133,7 @@ class COARNotification {
     /**
      * @return int
      */
-    public function getStatus(): int
+    public function getStatus(): ?int
     {
         return $this->status;
     }

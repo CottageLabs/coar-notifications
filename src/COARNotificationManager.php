@@ -355,8 +355,13 @@ class COARNotificationManager
             if(isset($this->logger)) {
                 $msg = 'Wrote ';
 
-                if($notification->getStatus() < 200 || $notification->getStatus() > 299)
-                    $msg .= "failed (" . $notification->getStatus() . ") ";
+                if(is_null($notification->getStatus()) ||
+                    ($notification->getStatus() < 200 || $notification->getStatus() > 299)) {
+                    $msg .= "failed ";
+
+                    if(!is_null($notification->getStatus()))
+                        $msg .= "(" . $notification->getStatus() . ") ";
+                }
 
                 if ($notification instanceof OutboundCOARNotification)
                     $msg .= "outbound";
