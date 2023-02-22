@@ -6,22 +6,22 @@ services:
       context: .
     container_name: 'coar_notify_php'
     ports:
-      - "8060:8080"
+      - "8060:80"
     networks:
       - coar_notify_network
     depends_on:
       - database
     env_file:
-      - docker/mariadb.env
+      - docker/mysql.env
   database:
-    image: "mariadb:latest"
-    container_name: 'coar_notify_mariadb'
+    image: "mysql:5.7"
+    container_name: 'coar_notify_database'
     expose:
       - "3306"
     volumes:
       - /var/lib/mysql
     env_file:
-      - docker/mariadb.env
+      - docker/mysql.env
     networks:
       - coar_notify_network
 networks:
