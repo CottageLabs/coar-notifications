@@ -5,7 +5,7 @@ use Monolog\Formatter\LineFormatter;
 use Monolog\Handler\RotatingFileHandler;
 use Monolog\Logger;
 
-require_once 'vendor/autoload.php';
+require_once '/code/vendor/autoload.php';
 
 $logger = new Logger('NotifyCOARLogger');
 $handler = new RotatingFileHandler(__DIR__ . '/log/NotifyCOARLogger.log',

@@ -6,30 +6,39 @@ services:
       context: .
     container_name: 'coar_notify_php'
     ports:
-      - "8060:8080"
+      - "8060:80"
     volumes:
-      - .:/var/www
+      - .:/code/
+      - ./docker:/var/www/html
     networks:
       - coar_notify_network
     depends_on:
       - database
     env_file:
       - docker/mariadb.env
-    #entrypoint:
-    #  ["./docker/entrypoint.sh"]
-    entrypoint:
-      ["php", "-S", "0.0.0.0:8080"]
-      #["tail", "-f", "/dev/null"]
   database:
     image: "mariadb:latest"
     container_name: 'coar_notify_mariadb'
     expose:
       - "3306"
     volumes:
-      - ./data/mysql:/var/lib/mysql
-      - ./logs/mysql:/var/log/mysql
+      - /var/lib/mysql
     env_file:
       - docker/mariadb.env
+    networks:
+      - coar_notify_network
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    container_name: pma
+    links:
+      - database
+    environment:
+      PMA_HOST: database
+      PMA_PORT: 3306
+      PMA_ARBITRARY: 1
+    restart: always
+    ports:
+      - 8081:80
     networks:
       - coar_notify_network
 networks:
