@@ -22,7 +22,9 @@
     "guzzlehttp/guzzle": "^7.5"
   },
   "autoload": {
-    "psr-4": {"cottagelabs\\coarNotifications\\": "src/"}
+    "psr-4": {
+      "cottagelabs\\coarNotifications\\": "src/"
+    }
   },
   "keywords": ["linked-data", "repository", "open access", "publishing", "peer-review"],
   "require-dev": {
