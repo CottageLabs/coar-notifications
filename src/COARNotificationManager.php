@@ -13,8 +13,6 @@ use Exception;
 use JsonException;
 use Monolog\Logger;
 
-require_once __DIR__ . '/orm/COARNotification.php';
-require_once __DIR__ . '/orm/COARNotificationException.php';
 
 // See https://rhiaro.co.uk/2017/08/diy-ldn for a very basic walkthrough of an ldn-inbox
 // done by Amu Guy who wrote the spec.
@@ -112,6 +110,8 @@ class COARNotificationManager
                 print("Couldn't establish a database connection: " . $e);
             return;
         }
+
+        $this->logger->debug('Received a request.');
 
         if($start_inbox)
             $this->do_response();

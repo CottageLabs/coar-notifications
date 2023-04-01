@@ -41,7 +41,7 @@ RUN docker-php-ext-install pdo_mysql && \
 
 # COPY --from=composer:latest /usr/bin/composer /usr/local/bin/composer
 
-WORKDIR /var/www
+WORKDIR /var/www/html
 
 COPY ./docker .
 

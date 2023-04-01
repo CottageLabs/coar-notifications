@@ -1,0 +1,11 @@
+{
+    "repositories": [
+    {
+        "type": "path",
+        "url": "../"
+    }
+    ],
+    "require": {
+        "cottagelabs/coar-notifications": "@dev"
+    }
+}
