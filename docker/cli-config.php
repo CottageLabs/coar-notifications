@@ -15,11 +15,11 @@ $config = Setup::createAnnotationMetadataConfiguration(array(__DIR__ . "/vendor/
 
 
 // the connection configuration
-$conn = array('host'     => getenv('MARIADB_HOST'),
+$conn = array('host'     => getenv('MYSQL_HOST'),
     'driver'   => 'pdo_mysql',
-    'user'     => getenv('MARIADB_USER'),
-    'password' => getenv('MARIADB_PASSWORD'),
-    'dbname'   => getenv('MARIADB_DATABASE'),
+    'user'     => getenv('MYSQL_USER'),
+    'password' => getenv('MYSQL_PASSWORD'),
+    'dbname'   => getenv('MYSQL_DATABASE'),
 );
 
 
