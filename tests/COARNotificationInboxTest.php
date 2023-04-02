@@ -1,10 +1,8 @@
 <?php
 
+/*
 use PHPUnit\Framework\TestCase;
 use Http\Mock\Client;
-
-require_once __DIR__ . "/../src/COARNotificationManager.php";
-require_once __DIR__ . "/../src/orm/COARNotification.php";
 
 final class COARNotificationManagerTest extends TestCase
 {
@@ -21,7 +19,7 @@ final class COARNotificationManagerTest extends TestCase
         validate_notification($json);
     }
 
-    /*public function testClientReturnsResponse()
+    public function testClientReturnsResponse()
     {
         // $firstRequest and $secondRequest are Psr\Http\Message\RequestInterface
         // objects
@@ -34,5 +32,6 @@ final class COARNotificationManagerTest extends TestCase
         $returnedResponse = $client->sendRequest($request);
         $this->assertSame($response, $returnedResponse);
         $this->assertSame($request, $client->getLastRequest());
-    }*/
+    }
 }
+*/

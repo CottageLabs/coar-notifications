@@ -11,6 +11,8 @@ services:
       - coar_notify_network
     depends_on:
       - database
+    volumes:
+      - .:/var/www/html
     env_file:
       - docker/mysql.env
   database:
