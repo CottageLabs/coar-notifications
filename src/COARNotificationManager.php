@@ -6,9 +6,10 @@ use cottagelabs\coarNotifications\orm\COARNotificationException;
 use cottagelabs\coarNotifications\orm\COARNotificationNoDatabaseException;
 use cottagelabs\coarNotifications\orm\OutboundCOARNotification;
 use Doctrine\DBAL\Connection;
+use Doctrine\DBAL\DriverManager;
 use Doctrine\ORM\EntityManager;
 use Doctrine\ORM\ORMException;
-use Doctrine\ORM\Tools\Setup;
+use Doctrine\ORM\ORMSetup;
 use Exception;
 use GuzzleHttp\Exception\ConnectException;
 use GuzzleHttp\Exception\RequestException;
@@ -91,10 +92,15 @@ class COARNotificationManager
         $this->timeout = $timeout;
         $this->user_agent = $user_agent;
 
-        $config = Setup::createAnnotationMetadataConfiguration(array(__DIR__."/src/orm"),
+        // Deprecated annotation metadata driver needs to be used because the attribute metadata driver requires
+        // PHP 8 <
+        $config = ORMSetup::createAnnotationMetadataConfiguration(array(__DIR__."/src/orm"),
             false, null, null, false);
+        
+        if(is_array($conn))
+            $conn = DriverManager::getConnection($conn, $config);            
 
-        $this->entityManager = EntityManager::create($conn, $config);
+        $this->entityManager = new EntityManager($conn, $config);
 
         // Verifying database connection
         try {
