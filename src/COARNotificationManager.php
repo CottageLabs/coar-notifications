@@ -230,6 +230,47 @@ class COARNotificationManager
 
     }
 
+    private function do_pattern(OutboundCOARNotification $outboundCOARNotification, $inReplyToId = null)   {
+        if(!$this->connected)
+            throw new COARNotificationNoDatabaseException();
+
+        if(!empty($inReplyToId))
+            $outboundCOARNotification->setInReplyToId($inReplyToId);
+        
+        $this->send($outboundCOARNotification);
+        $this->persistNotification($outboundCOARNotification);
+    }
+
+    /**
+     * This pattern is used to acknowledge and accept a request (offer).
+     * 
+     * https://notify.coar-repositories.org/patterns/acknowledge-acceptance/
+     * @param OutboundCOARNotification $outboundCOARNotification
+     * @param null $inReplyToId
+     * @throws COARNotificationException
+     * @throws COARNotificationNoDatabaseException
+     */
+    public function acknowledgeAndAccept(OutboundCOARNotification $outboundCOARNotification, $inReplyToId = null) {
+        $outboundCOARNotification->setType(["Accept"]);
+
+        $this->do_pattern($outboundCOARNotification, $inReplyToId);
+    }
+
+    /**
+     * This pattern is used to acknowledge and reject a request (offer).
+     * 
+     * https://notify.coar-repositories.org/patterns/acknowledge-rejection/
+     * @param OutboundCOARNotification $outboundCOARNotification
+     * @param null $inReplyToId
+     * @throws COARNotificationException
+     * @throws COARNotificationNoDatabaseException
+     */
+    public function acknowledgeAndReject(OutboundCOARNotification $outboundCOARNotification, $inReplyToId = null) {
+        $outboundCOARNotification->setType(["Reject"]);
+
+        $this->do_pattern($outboundCOARNotification, $inReplyToId);
+    }
+
     /**
      * Author requests review with possible endorsement (via overlay journal)
      * Implements step 3 of scenario 1
@@ -240,16 +281,39 @@ class COARNotificationManager
      * @throws COARNotificationNoDatabaseException
      */
     public function announceEndorsement(OutboundCOARNotification $outboundCOARNotification, $inReplyToId = null) {
-        if(!$this->connected)
-            throw new COARNotificationNoDatabaseException();
-
-        if(!empty($inReplyToId))
-            $outboundCOARNotification->setInReplyToId($inReplyToId);
-
         $outboundCOARNotification->setType(["Announce", "coar-notify:EndorsementAction"]);
 
-        $this->send($outboundCOARNotification);
-        $this->persistNotification($outboundCOARNotification);
+        $this->do_pattern($outboundCOARNotification, $inReplyToId);
+    }
+
+    /**
+     * This pattern is used to announce a resource has been ingested.
+     * 
+     * https://notify.coar-repositories.org/patterns/announce-ingest/
+     * @param OutboundCOARNotification $outboundCOARNotification
+     * @param null $inReplyToId
+     * @throws COARNotificationException
+     * @throws COARNotificationNoDatabaseException
+     */
+    public function announceIngest(OutboundCOARNotification $outboundCOARNotification, $inReplyToId = null) {
+        $outboundCOARNotification->setType(["Announce", "coar-notify:IngestAction"]);
+
+        $this->do_pattern($outboundCOARNotification, $inReplyToId);
+    }
+
+    /**
+     * This pattern is used to announce a relationship between two resources.
+     * 
+     * https://notify.coar-repositories.org/patterns/announce-relationship/
+     * @param OutboundCOARNotification $outboundCOARNotification
+     * @param null $inReplyToId
+     * @throws COARNotificationException
+     * @throws COARNotificationNoDatabaseException
+     */
+    public function announceRelationship(OutboundCOARNotification $outboundCOARNotification, $inReplyToId = null) {
+        $outboundCOARNotification->setType(["Announce", "coar-notify:RelationshipAction"]);
+
+        $this->do_pattern($outboundCOARNotification, $inReplyToId);
     }
 
     /**
@@ -262,18 +326,33 @@ class COARNotificationManager
      * @throws COARNotificationNoDatabaseException
      */
     public function announceReview(OutboundCOARNotification $outboundCOARNotification, $inReplyToId = null) {
-        if(!$this->connected)
-            throw new COARNotificationNoDatabaseException();
-
-        // Special case of step 4 scenario 2
-        // https://notify.coar-repositories.org/scenarios/2/4/
-        if(!empty($inReplyToId))
-            $outboundCOARNotification->setInReplyToId($inReplyToId);
-
         $outboundCOARNotification->setType(["Announce", "coar-notify:ReviewAction"]);
 
-        $this->send($outboundCOARNotification);
-        $this->persistNotification($outboundCOARNotification);
+        $this->do_pattern($outboundCOARNotification, $inReplyToId);
+    }
+
+    /**
+     * This pattern is used to request endorsement of a resource owned by the origin system.
+     * https://notify.coar-repositories.org/patterns/request-endorsement/
+     * @throws COARNotificationException
+     */
+    public function requestEndorsement(OutboundCOARNotification $outboundCOARNotification) {
+
+        $outboundCOARNotification->setType(["Offer", "coar-notify:EndorsementAction"]);
+
+        $this->do_pattern($outboundCOARNotification);
+    }
+
+    /**
+     * This pattern is used to request that the target system ingest a resource.
+     * https://notify.coar-repositories.org/patterns/request-ingest/
+     * @throws COARNotificationException
+     */
+    public function requestIngest(OutboundCOARNotification $outboundCOARNotification) {
+
+        $outboundCOARNotification->setType(["Offer", "coar-notify:IngestAction"]);
+
+        $this->do_pattern($outboundCOARNotification);
     }
 
     /**
@@ -283,13 +362,22 @@ class COARNotificationManager
      * @throws COARNotificationException
      */
     public function requestReview(OutboundCOARNotification $outboundCOARNotification) {
-        if(!$this->connected)
-            throw new COARNotificationNoDatabaseException();
 
         $outboundCOARNotification->setType(["Offer", "coar-notify:ReviewAction"]);
 
-        $this->send($outboundCOARNotification);
-        $this->persistNotification($outboundCOARNotification);
+        $this->do_pattern($outboundCOARNotification);
+    }
+
+    /**
+     * This pattern is used to retract (undo) an offer previously made.
+     * https://notify.coar-repositories.org/patterns/undo-offer/
+     * @throws COARNotificationException
+     */
+    public function retractOffer(OutboundCOARNotification $outboundCOARNotification) {
+
+        $outboundCOARNotification->setType(["Undo"]);
+
+        $this->do_pattern($outboundCOARNotification);
     }
 
     /**
