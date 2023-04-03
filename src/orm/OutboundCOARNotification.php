@@ -22,13 +22,14 @@ class OutboundCOARNotification extends COARNotification {
     /**
      * @throws Exception
      */
-    public function __construct(Logger                  $logger, string $id, string $inbox_url,
-                                COARNotificationActor   $cActor, COARNotificationObject $cObject,
-                                COARNotificationContext $cContext, COARNotificationTarget $cTarget)
+    public function __construct(Logger                  $logger=null, string $id, string $inbox_url,
+                                COARNotificationActor   $actor, COARNotificationObject $obj,
+                                COARNotificationContext $ctx, COARNotificationTarget $target)
     {
         parent::__construct($logger);
 
-        $this->logger = $logger;
+        if(isset($logger))
+            $this->logger = $logger;
 
         $this->base = new stdClass();
         $this->base->{'@context'} = ["https://www.w3.org/ns/activitystreams", "http://purl.org/coar/notify"];
@@ -45,26 +46,26 @@ class OutboundCOARNotification extends COARNotification {
         $this->base->id = $this->getId();
 
         $this->setFromId($id);
-        $this->setToId($cTarget->getId());
+        $this->setToId($target->getId());
 
-        $this->base->actor = $cActor;
+        $this->base->actor = $actor;
 
         // Object with a special character property name
         $this->base->object = new stdClass();
-        $this->base->object->type = $cObject->getType();
-        $this->base->object->id = $cObject->getId();
-        $this->base->object->{'ietf:cite-as'} = $cObject->getIetfCiteAs();
+        $this->base->object->type = $obj->getType();
+        $this->base->object->id = $obj->getId();
+        $this->base->object->{'ietf:cite-as'} = $obj->getIetfCiteAs();
 
         // Context and child URL object both with special character property name
         $this->base->context = new stdClass();
-        $this->base->context->id = $cContext->getId();
-        $this->base->context->{'ietf:cite-as'} = $cContext->getIetfCiteAs();
+        $this->base->context->id = $ctx->getId();
+        $this->base->context->{'ietf:cite-as'} = $ctx->getIetfCiteAs();
         $this->base->context->url = new stdClass();
-        $this->base->context->url->id = $cContext->getUrl()->getId();
-        $this->base->context->url->{"media-type"} = $cContext->getUrl()->getMediaType();
-        $this->base->context->url->type =  $cContext->getUrl()->getType();
+        $this->base->context->url->id = $ctx->getUrl()->getId();
+        $this->base->context->url->{"media-type"} = $ctx->getUrl()->getMediaType();
+        $this->base->context->url->type =  $ctx->getUrl()->getType();
 
-        $this->base->target = $cTarget;
+        $this->base->target = $target;
 
         //$this->setType($this->base->type);
 

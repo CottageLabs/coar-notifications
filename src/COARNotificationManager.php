@@ -113,8 +113,6 @@ class COARNotificationManager
             return;
         }
 
-        $this->logger->debug('Received a request.');
-
         if($start_inbox)
             $this->do_response();
 
@@ -223,11 +221,13 @@ class COARNotificationManager
     /**
      * @throws Exception
      */
-    public function createOutboundNotification($cNActor, $cObject, $cContext, $cTarget): OutboundCOARNotification
+    public function createOutboundNotification($actor, $obj, $ctx, $target): OutboundCOARNotification
     {
-        return new OutboundCOARNotification($this->logger, $this->id, $this->inbox_url,
-            $cNActor, $cObject, $cContext, $cTarget);
-
+        if(isset($logger))
+            return new OutboundCOARNotification($this->logger, $this->id, $this->inbox_url, $actor, $obj, $ctx, $target);
+        
+        return new OutboundCOARNotification(null, $this->id, $this->inbox_url, $actor, $obj, $ctx, $target);
+    
     }
 
     private function do_pattern(OutboundCOARNotification $outboundCOARNotification, $inReplyToId = null)   {
