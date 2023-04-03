@@ -14,8 +14,6 @@ const ACTIVITIES = array('accept', 'add', 'announce', 'arrive', 'block', 'create
     'follow', 'ignore', 'invite', 'join', 'leave', 'like', 'listen', 'move', 'offer', 'question', 'reject', 'read',
     'remove', 'tentativereject', 'tentativeaccept', 'travel', 'undo', 'update', 'view');
 
-const NOTIFY_ACTIONS = array('EndorsementAction', 'IngestAction', 'RelationshipAction', 'ReviewAction');
-
 
 /**
  * @author Hrafn Malmquist - Cottage Labs - hrafn@cottagelabs.com
@@ -205,14 +203,14 @@ class COARNotification {
     }
 
     /**
-     * A notification can be of more than one type and they should all be valid activities.
+     * A notification can be of more than one type and at least one must be an Activity Stream 2.0 Activity Type .
      * @throws COARNotificationException
      */
     protected function validateType(array $type):void {
-        if(count(array_diff(array_map('strtolower', $type), array_merge(ACTIVITIES, NOTIFY_ACTIONS))) === count($type)) {
+        if(count(array_intersect(array_map('strtolower', $type), ACTIVITIES)) > 0) {
             if (isset($this->logger))
                 $this->logger->warning("(UId: '" . $this->getId() . "')"
-                    . "Type is neither an Activity Stream 2.0 Activity Type nor a Notify Action.");
+                    . "Does not have an Activity Stream 2.0 Activity Type.");
 
         }
     }

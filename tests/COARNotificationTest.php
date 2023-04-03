@@ -30,9 +30,9 @@ final class COARNotificationTest extends TestCase
     public function testSetType(): void 
     {
         $notification = new COARNotification();
-        $type =  array('EndorsementAction');
+        $type =  array('coar-notify:EndorsementAction');
         $notification->setType($type);
 
-        assertSame('["EndorsementAction"]', $notification->getType());
+        assertSame('["coar-notify:EndorsementAction"]', $notification->getType());
     }
 }
