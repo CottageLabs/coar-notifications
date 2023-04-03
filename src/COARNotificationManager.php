@@ -384,7 +384,8 @@ class COARNotificationManager
      * todo Handle send HTTP errors
      */
     private function send(OutboundCOARNotification $outboundCOARNotification) {
-        $this->logger->debug("Sending notification.");
+        if(isset($this->logger))
+            $this->logger->debug("Sending notification.");
 
         // TODO Disable 400-500 HTTP errors being raised ['http_errors' => false]
         $client = new \GuzzleHttp\Client();
@@ -403,7 +404,9 @@ class COARNotificationManager
             // Guzzle will use cURL by default, we can therefore expect a ContextHandler with
             // cURL error codes
             $ctx = $e->getHandlerContext();
-            $this->logger->error('Error');
+
+            if(isset($this->logger))
+                $this->logger->error('Error');
 
 
             if(in_array('errno', $ctx)) {
@@ -419,10 +422,11 @@ class COARNotificationManager
                 else
                     $msg .= " cURL error no: " . $error_no;
 
-                $this->logger->error($msg);
+                if(isset($this->logger))
+                    $this->logger->error($msg);
 
             }
-            else {
+            else if(isset($this->logger)) {
                 $this->logger->error($e);
             }
 

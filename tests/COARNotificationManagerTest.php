@@ -53,7 +53,12 @@ final class COARNotificationManagerTest extends TestCase
 
         $outBoundNotification = $mnger->createOutboundNotification($actor, $obj, $ctx, $target);
 
+        $mnger->acknowledgeAndAccept($outBoundNotification);
+
         assertSame($target->getInbox(), $outBoundNotification->getTargetURL());
+        assertSame(6, $outBoundNotification->getStatus());
+        assertSame('["Accept"]', $outBoundNotification->getType());
+
 
     }
 
