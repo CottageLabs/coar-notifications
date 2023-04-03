@@ -14,6 +14,8 @@ const ACTIVITIES = array('accept', 'add', 'announce', 'arrive', 'block', 'create
     'follow', 'ignore', 'invite', 'join', 'leave', 'like', 'listen', 'move', 'offer', 'question', 'reject', 'read',
     'remove', 'tentativereject', 'tentativeaccept', 'travel', 'undo', 'update', 'view');
 
+const NOTIFY_ACTIONS = array('EndorsementAction', 'IngestAction', 'RelationshipAction', 'ReviewAction');
+
 
 /**
  * @author Hrafn Malmquist - Cottage Labs - hrafn@cottagelabs.com
@@ -203,20 +205,14 @@ class COARNotification {
     }
 
     /**
+     * A notification can be of more than one type and they should all be valid activities.
      * @throws COARNotificationException
      */
-    protected function validateType($type):void {
-        if($type === "") {
-            $msg = "(UId: '" . $this->getId() . "') Type can not be null.";
-            if (isset($this->logger))
-                $this->logger->error($msg);
-            throw new COARNotificationException($msg);
-        }
-        else if(count(array_diff(array_map('strtolower', $type), ACTIVITIES)) === count($type)) {
-            //!in_array(strtolower($type), ACTIVITIES)) {
+    protected function validateType(array $type):void {
+        if(count(array_diff(array_map('strtolower', $type), array_merge(ACTIVITIES, NOTIFY_ACTIONS))) === count($type)) {
             if (isset($this->logger))
                 $this->logger->warning("(UId: '" . $this->getId() . "')"
-                    . "Type '$type' is not an Activity Stream 2.0 Activity Type.");
+                    . "Type is neither an Activity Stream 2.0 Activity Type nor a Notify Action.");
 
         }
     }
@@ -236,7 +232,7 @@ class COARNotification {
      * This should include one of the Activity Stream 2.0 Activity Types.
      * https://www.w3.org/TR/activitystreams-vocabulary/
      * It may (depending on the activity) also include a type from the Notify Activity Types vocabulary
-     * https://notify.coar-repositories.org/vocabularies/activity_types/ (404)
+     * https://purl.org/coar/notify_vocabulary/
      * @return string
      */
     public function getType(): string

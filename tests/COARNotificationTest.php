@@ -26,4 +26,13 @@ final class COARNotificationTest extends TestCase
         assertStringStartsWith('urn:uuid:', $notification->getId());
 
     }
+
+    public function testSetType(): void 
+    {
+        $notification = new COARNotification();
+        $type =  array('EndorsementAction');
+        $notification->setType($type);
+
+        assertSame('["EndorsementAction"]', $notification->getType());
+    }
 }
