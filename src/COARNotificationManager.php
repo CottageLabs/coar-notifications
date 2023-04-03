@@ -118,9 +118,16 @@ class COARNotificationManager
 
     }
 
-    public function get_notifications(): \Doctrine\Persistence\ObjectRepository
+    public function get_notifications(): array
     {
-        return $this->entityManager->getRepository(COARNotification::class);
+        $queryBuilder = $this->entityManager->createQueryBuilder();
+
+        $queryBuilder
+            ->select('c')
+            ->from('cottagelabs\coarNotifications\orm\COARNotification', 'c')
+            ->orderBy('c.timestamp', 'DESC');
+
+        return $queryBuilder->getQuery()->getResult();
     }
 
     public function __toString(): string {

@@ -44,7 +44,7 @@ $outCounter = 0;
 $inBound = '<table><tr><th>Inbound</th></tr><tr><td class="header">Time</td><td class="header">Id</td></tr>';
 $outBound = '<table><tr><th>Outbound</th></tr><tr><td class="header">Time</td><td class="header">Id</td></tr>';
 
-foreach ($notifications->findAll() as $notification) {
+foreach ($notifications as $notification) {
     $time = $notification->getTimestamp()->format('D, d M Y H:i:s');
     $id = $notification->getId();
 
