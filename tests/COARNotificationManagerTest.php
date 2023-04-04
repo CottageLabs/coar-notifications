@@ -11,10 +11,23 @@ use cottagelabs\coarNotifications\COARNotificationURL;
 use cottagelabs\coarNotifications\orm\COARNotificationNoDatabaseException;
 use Doctrine\ORM\EntityManager;
 
+use function PHPUnit\Framework\assertInstanceOf;
+use function PHPUnit\Framework\assertNull;
 use function PHPUnit\Framework\assertSame;
+
 
 final class COARNotificationManagerTest extends TestCase
 {
+
+    public function setUp(): void
+    {
+        $this->conn = array('host'     => getenv('MYSQL_HOST'),
+        'driver'   => 'pdo_mysql',
+        'user'     => getenv('MYSQL_USER'),
+        'password' => getenv('MYSQL_PASSWORD'),
+        'dbname'   => getenv('MYSQL_DATABASE'),
+      );
+    }
 
     public function testNeedsValidConnection(): void
     {
@@ -35,16 +48,10 @@ final class COARNotificationManagerTest extends TestCase
         
     }
 
-    public function testCreateOutboundNotification(): void 
+    public function testCreateOutboundNotification(): string 
     {
-        $conn = array('host'     => getenv('MYSQL_HOST'),
-                      'driver'   => 'pdo_mysql',
-                      'user'     => getenv('MYSQL_USER'),
-                      'password' => getenv('MYSQL_PASSWORD'),
-                      'dbname'   => getenv('MYSQL_DATABASE'),
-                    );
         
-        $mnger = new COARNotificationManager($conn, false, null, 'Mocking');
+        $mnger = new COARNotificationManager($this->conn, false, null, 'Mocking');
 
         $actor = new COARNotificationActor('actorId', 'actorName', 'actorType');
         $obj = new COARNotificationObject('objId', 'citeAs', array('objType'));
@@ -59,7 +66,40 @@ final class COARNotificationManagerTest extends TestCase
         assertSame(6, $outBoundNotification->getStatus());
         assertSame('["Accept"]', $outBoundNotification->getType());
 
+        return $outBoundNotification->getId();
 
+
+    }
+
+    /**
+     * @depends testCreateOutboundNotification
+     */
+    public function testGetNotification(string $createdId): string
+    {
+                    
+        $mnger = new COARNotificationManager($this->conn, false, null, 'Mocking');
+
+        $notification = $mnger->getNotificationById('test');
+        assertNull($notification);
+
+        $notification = $mnger->getNotificationById($createdId);
+        assertInstanceOf(COARNotification::class, $notification);
+
+        return $createdId;
+
+
+    }
+
+    /**
+     * @depends testGetNotification
+     */
+    public function testRemoveNotification(string $createdId): void
+    {
+        $mnger = new COARNotificationManager($this->conn, false, null, 'Mocking');
+        $mnger->removeNotificationById($createdId);
+
+        $notification = $mnger->getNotificationById($createdId);
+        assertNull($notification);
     }
 
 }
