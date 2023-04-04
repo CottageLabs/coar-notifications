@@ -488,10 +488,16 @@ class COARNotificationManager
         }
     }
 
+    public function getNotificationById(string $notificationId): ?COARNotification
+    {
+        return $this->entityManager->getReference(COARNotification::class, $notificationId);
+        
+    }
+
     public function removeNotificationById(string $notificationId): void
     {
 
-        $notificationToRemove = $this->entityManager->getReference(COARNotification::class, $notificationId);
+        $notificationToRemove = $this->getNotificationById($notificationId);
 
         try {
             $this->entityManager->remove($notificationToRemove);
