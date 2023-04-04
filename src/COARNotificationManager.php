@@ -69,7 +69,7 @@ class COARNotificationManager
      * @throws COARNotificationException
      * @throws ORMException
      */
-    public function __construct($conn, $start_inbox=True, Logger $logger=null, string $id=null, string $inbox_url=null,
+    public function __construct($conn, Logger $logger=null, string $id=null, string $inbox_url=null,
                                 //$accepted_formats=array('application/ld+json'),
                                 $timeout=5, $user_agent='PHP COAR Notification Manager')
     {
@@ -119,116 +119,122 @@ class COARNotificationManager
             return;
         }
 
-        if($start_inbox)
-            $this->doResponse();
-
     }
 
-    public function getNotifications(): array
-    {
+    public function getNotifications(string $select='c'): array    {
         $queryBuilder = $this->entityManager->createQueryBuilder();
 
         $queryBuilder
-            ->select('c')
+            ->select($select)
             ->from('cottagelabs\coarNotifications\orm\COARNotification', 'c')
             ->orderBy('c.timestamp', 'DESC');
 
         return $queryBuilder->getQuery()->getResult();
     }
 
+    public function getNotificationIds(): array {
+        return array_column($this->getNotifications('c.id'), 'id');
+    }
+
     public function __toString(): string {
         return static::class . $this->id;
     }
 
-    /**
-     * Handles incoming requests.
-     * @throws COARNotificationException
-     */
-    public function doResponse() {
-        if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    public function setOptionsResponseHeaders(): void {
         // See https://www.w3.org/TR/2017/REC-ldn-20170502/#sender
-            header("Allow: " . implode(', ', ['POST', 'OPTIONS']));
-            header("Accept-Post: " . implode(', ', $this->accepted_formats));
+        header("Allow: " . implode(', ', ['POST', 'OPTIONS']));
+        header("Accept-Post: " . implode(', ', $this->accepted_formats));
 
-        } else if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            // See https://www.w3.org/TR/2017/REC-ldn-2COARTarget0170502/#sender
-            if (str_starts_with($_SERVER["CONTENT_TYPE"], 'application/ld+json')) {
-                // Could be followed by a 'profile' but that's not actioned on
-                // https://datatracker.ietf.org/doc/html/rfc6906
+    }
 
-                if(isset($this->logger))
-                    $this->logger->debug('Received a ld+json POST request.');
+    public function getPostResponse(): void {
+        // See https://www.w3.org/TR/2017/REC-ldn-2COARTarget0170502/#sender
+        if (str_starts_with($_SERVER["CONTENT_TYPE"], 'application/ld+json')) {
+            // Could be followed by a 'profile' but that's not actioned on
+            // https://datatracker.ietf.org/doc/html/rfc6906
 
-                if(!$this->connected)
-                    throw new COARNotificationNoDatabaseException();
+            if(isset($this->logger))
+                $this->logger->debug('Received a ld+json POST request.');
 
-                // Validating JSON and keeping the variable
-                // Alternative is to load into EasyRDF, the go to rdf library for PHP,
-                // or the more lightweight and ActivityStreams-specific ActivityPhp
-                // This is a computationally expensive operation that should be done
-                // at a later stage.
+            if(!$this->connected)
+                throw new COARNotificationNoDatabaseException();
 
-                try {
-                    $notification_json = json_decode(
-                        file_get_contents('php://input'), true, 512,
-                        JSON_THROW_ON_ERROR);
-                } catch (JsonException $exception) {
-                    if(isset($this->logger)) {
-                        $this->logger->error("Syntax error: Badly formed JSON in payload.");
-                        $this->logger->debug($exception->getTraceAsString());
-                    }
-                    http_response_code(400);
-                    return;
+            // Validating JSON and keeping the variable
+            // Alternative is to load into EasyRDF, the go to rdf library for PHP,
+            // or the more lightweight and ActivityStreams-specific ActivityPhp
+            // This is a computationally expensive operation that should be done
+            // at a later stage.
+
+            try {
+                $notification_json = json_decode(
+                    file_get_contents('php://input'), true, 512,
+                    JSON_THROW_ON_ERROR);
+            } catch (JsonException $exception) {
+                if(isset($this->logger)) {
+                    $this->logger->error("Syntax error: Badly formed JSON in payload.");
+                    $this->logger->debug($exception->getTraceAsString());
                 }
-
-                try {
-                    validate_notification($notification_json);
-                } catch (COARNotificationException $exception) {
-                    if(isset($this->logger)) {
-                        $this->logger->error("Invalid notification: " . $exception->getMessage());
-                        $this->logger->debug($exception->getTraceAsString());
-                        $this->logger->debug((print_r($notification_json, true)));
-                    }
-                    http_response_code(422);
-                    return;
-                }
-
-                // Creating an inbound ORM object
-                try {
-                    $notification = new COARNotification($this->logger);
-                    $notification->setId($notification_json['id'] ?? '');
-                    $notification->setFromId($notification_json['origin']['id'] ?? '');
-                    $notification->setToId($notification_json['target']['id'] ?? '');
-
-                    if($notification_json['type'])
-                        $notification->setType($notification_json['type']);
-
-                    $notification->setOriginal($notification_json);
-                    $notification->setStatus(201);
-                } catch (COARNotificationException | Exception $exception) {
-                    if(isset($this->logger)) {
-                        $this->logger->error($exception->getMessage());
-                        $this->logger->debug($exception->getTraceAsString());
-                    }
-                    http_response_code(422);
-                    return;
-                }
-
-                // Committing to database
-
-                $this->persistNotification($notification);
-
-                //header("Location: " . $config['inbox_url']);
-                http_response_code(201);
-
-            } else {
-                if(isset($this->logger))
-                    $this->logger->debug("415 Unsupported Media Type: received a POST but content type '"
-                        . $_SERVER["CONTENT_TYPE"] . "' not an accepted format.");
-                http_response_code(415);
+                http_response_code(400);
+                return;
             }
 
+            try {
+                validate_notification($notification_json);
+            } catch (COARNotificationException $exception) {
+                if(isset($this->logger)) {
+                    $this->logger->error("Invalid notification: " . $exception->getMessage());
+                    $this->logger->debug($exception->getTraceAsString());
+                    $this->logger->debug((print_r($notification_json, true)));
+                }
+                http_response_code(422);
+                return;
+            }
+
+            // Creating an inbound ORM object
+            try {
+                $notification = new COARNotification($this->logger);
+                $notification->setId($notification_json['id'] ?? '');
+                $notification->setFromId($notification_json['origin']['id'] ?? '');
+                $notification->setToId($notification_json['target']['id'] ?? '');
+
+                if($notification_json['type'])
+                    $notification->setType($notification_json['type']);
+
+                $notification->setOriginal($notification_json);
+                $notification->setStatus(201);
+            } catch (COARNotificationException | Exception $exception) {
+                if(isset($this->logger)) {
+                    $this->logger->error($exception->getMessage());
+                    $this->logger->debug($exception->getTraceAsString());
+                }
+                http_response_code(422);
+                return;
+            }
+
+            // Committing to database
+            $this->persistNotification($notification);
+
+            //header("Location: " . $config['inbox_url']);
+            http_response_code(201);
+
+        } else {
+            if(isset($this->logger))
+                $this->logger->debug("415 Unsupported Media Type: received a POST but content type '"
+                    . $_SERVER["CONTENT_TYPE"] . "' not an accepted format.");
+            http_response_code(415);
         }
+        
+    }
+
+    public function getGetResponse(): string {
+        header('Content-Type: application/ld+json; charset=utf-8');
+
+        $notifications = array('@context' => 'http://www.w3.org/ns/ldp',
+            '@id' => $this->id,
+            'contains' => $this->getNotificationIds());
+
+        return json_encode($notifications);
+
     }
 
     /**
@@ -243,7 +249,7 @@ class COARNotificationManager
     
     }
 
-    private function do_pattern(OutboundCOARNotification $outboundCOARNotification, $inReplyToId = null)   {
+    private function doPattern(OutboundCOARNotification $outboundCOARNotification, $inReplyToId = null)   {
         if(!$this->connected)
             throw new COARNotificationNoDatabaseException();
 
@@ -266,7 +272,7 @@ class COARNotificationManager
     public function acknowledgeAndAccept(OutboundCOARNotification $outboundCOARNotification, $inReplyToId = null) {
         $outboundCOARNotification->setType(["Accept"]);
 
-        $this->do_pattern($outboundCOARNotification, $inReplyToId);
+        $this->doPattern($outboundCOARNotification, $inReplyToId);
     }
 
     /**
@@ -281,7 +287,7 @@ class COARNotificationManager
     public function acknowledgeAndReject(OutboundCOARNotification $outboundCOARNotification, $inReplyToId = null) {
         $outboundCOARNotification->setType(["Reject"]);
 
-        $this->do_pattern($outboundCOARNotification, $inReplyToId);
+        $this->doPattern($outboundCOARNotification, $inReplyToId);
     }
 
     /**
@@ -296,7 +302,7 @@ class COARNotificationManager
     public function announceEndorsement(OutboundCOARNotification $outboundCOARNotification, $inReplyToId = null) {
         $outboundCOARNotification->setType(["Announce", "coar-notify:EndorsementAction"]);
 
-        $this->do_pattern($outboundCOARNotification, $inReplyToId);
+        $this->doPattern($outboundCOARNotification, $inReplyToId);
     }
 
     /**
@@ -311,7 +317,7 @@ class COARNotificationManager
     public function announceIngest(OutboundCOARNotification $outboundCOARNotification, $inReplyToId = null) {
         $outboundCOARNotification->setType(["Announce", "coar-notify:IngestAction"]);
 
-        $this->do_pattern($outboundCOARNotification, $inReplyToId);
+        $this->doPattern($outboundCOARNotification, $inReplyToId);
     }
 
     /**
@@ -326,7 +332,7 @@ class COARNotificationManager
     public function announceRelationship(OutboundCOARNotification $outboundCOARNotification, $inReplyToId = null) {
         $outboundCOARNotification->setType(["Announce", "coar-notify:RelationshipAction"]);
 
-        $this->do_pattern($outboundCOARNotification, $inReplyToId);
+        $this->doPattern($outboundCOARNotification, $inReplyToId);
     }
 
     /**
@@ -341,7 +347,7 @@ class COARNotificationManager
     public function announceReview(OutboundCOARNotification $outboundCOARNotification, $inReplyToId = null) {
         $outboundCOARNotification->setType(["Announce", "coar-notify:ReviewAction"]);
 
-        $this->do_pattern($outboundCOARNotification, $inReplyToId);
+        $this->doPattern($outboundCOARNotification, $inReplyToId);
     }
 
     /**
@@ -353,7 +359,7 @@ class COARNotificationManager
 
         $outboundCOARNotification->setType(["Offer", "coar-notify:EndorsementAction"]);
 
-        $this->do_pattern($outboundCOARNotification);
+        $this->doPattern($outboundCOARNotification);
     }
 
     /**
@@ -365,7 +371,7 @@ class COARNotificationManager
 
         $outboundCOARNotification->setType(["Offer", "coar-notify:IngestAction"]);
 
-        $this->do_pattern($outboundCOARNotification);
+        $this->doPattern($outboundCOARNotification);
     }
 
     /**
@@ -378,7 +384,7 @@ class COARNotificationManager
 
         $outboundCOARNotification->setType(["Offer", "coar-notify:ReviewAction"]);
 
-        $this->do_pattern($outboundCOARNotification);
+        $this->doPattern($outboundCOARNotification);
     }
 
     /**
@@ -390,7 +396,7 @@ class COARNotificationManager
 
         $outboundCOARNotification->setType(["Undo"]);
 
-        $this->do_pattern($outboundCOARNotification);
+        $this->doPattern($outboundCOARNotification);
     }
 
     /**
