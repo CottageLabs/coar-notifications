@@ -22,7 +22,7 @@ $conn = array('host'     => getenv('MYSQL_HOST'),
 );
 
 $coarNotificationManager = new COARNotificationManager($conn, true, $logger);
-$notifications = $coarNotificationManager->get_notifications();
+$notifications = $coarNotificationManager->getNotifications();
 
 ?>
 

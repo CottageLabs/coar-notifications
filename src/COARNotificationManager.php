@@ -86,7 +86,7 @@ class COARNotificationManager
         //if(!is_array($accepted_formats))
         //    throw new InvalidArgumentException("'accepted_formats' argument must be an array.");
 
-        $this->accepted_formats = array('application/ld+json'); //$accepted_formats;
+        $this->accepted_formats = array('application/ld+json');
 
         // Timeout and user agent are only relevant for outbound notifications
         $this->timeout = $timeout;
@@ -120,11 +120,11 @@ class COARNotificationManager
         }
 
         if($start_inbox)
-            $this->do_response();
+            $this->doResponse();
 
     }
 
-    public function get_notifications(): array
+    public function getNotifications(): array
     {
         $queryBuilder = $this->entityManager->createQueryBuilder();
 
@@ -144,7 +144,7 @@ class COARNotificationManager
      * Handles incoming requests.
      * @throws COARNotificationException
      */
-    public function do_response() {
+    public function doResponse() {
         if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
         // See https://www.w3.org/TR/2017/REC-ldn-20170502/#sender
             header("Allow: " . implode(', ', ['POST', 'OPTIONS']));
