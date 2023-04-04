@@ -51,7 +51,7 @@ final class COARNotificationManagerTest extends TestCase
     public function testCreateOutboundNotification(): string 
     {
         
-        $mnger = new COARNotificationManager($this->conn, false, null, 'Mocking');
+        $mnger = new COARNotificationManager($this->conn, null, 'Mocking');
 
         $actor = new COARNotificationActor('actorId', 'actorName', 'actorType');
         $obj = new COARNotificationObject('objId', 'citeAs', array('objType'));
@@ -77,7 +77,7 @@ final class COARNotificationManagerTest extends TestCase
     public function testGetNotification(string $createdId): string
     {
                     
-        $mnger = new COARNotificationManager($this->conn, false, null, 'Mocking');
+        $mnger = new COARNotificationManager($this->conn, null, 'Mocking');
 
         $notification = $mnger->getNotificationById('test');
         assertNull($notification);
@@ -95,7 +95,7 @@ final class COARNotificationManagerTest extends TestCase
      */
     public function testRemoveNotification(string $createdId): void
     {
-        $mnger = new COARNotificationManager($this->conn, false, null, 'Mocking');
+        $mnger = new COARNotificationManager($this->conn, null, 'Mocking');
         $mnger->removeNotificationById($createdId);
 
         $notification = $mnger->getNotificationById($createdId);
