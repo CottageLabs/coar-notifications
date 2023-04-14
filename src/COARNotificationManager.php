@@ -18,7 +18,7 @@ use Monolog\Logger;
 
 
 // See https://rhiaro.co.uk/2017/08/diy-ldn for a very basic walkthrough of an ldn-inbox
-// done by Amu Guy who wrote the spec.
+// done by Amy Guy who wrote the spec.
 
 /**
  *  This validation functions ensures that there is a '@context' property that includes
@@ -228,6 +228,7 @@ class COARNotificationManager
 
     public function getGetResponse(): string {
         header('Content-Type: application/ld+json; charset=utf-8');
+        header('Accept: ' . implode(', ', $this->accepted_formats));
 
         $notifications = array('@context' => 'http://www.w3.org/ns/ldp',
             '@id' => $this->id,
