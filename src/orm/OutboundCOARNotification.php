@@ -62,12 +62,10 @@ class OutboundCOARNotification extends COARNotification {
         $this->base->context->{'ietf:cite-as'} = $ctx->getIetfCiteAs();
         $this->base->context->url = new stdClass();
         $this->base->context->url->id = $ctx->getUrl()->getId();
-        $this->base->context->url->{"media-type"} = $ctx->getUrl()->getMediaType();
+        $this->base->context->url->{"mediaType"} = $ctx->getUrl()->getMediaType();
         $this->base->context->url->type =  $ctx->getUrl()->getType();
 
         $this->base->target = $target;
-
-        //$this->setType($this->base->type);
 
         $this->setOriginal($this->base);
 
