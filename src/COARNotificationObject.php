@@ -1,12 +1,17 @@
 <?php
 namespace cottagelabs\coarNotifications;
 
+/**
+ *  This should be the focus of the activity. Other object properties may appear in notifications, as properties of other properties.
+ * 
+ *  See: https://notify.coar-repositories.org/patterns/
+ */
 class COARNotificationObject {
     private string $id;
     private string $ietfCiteAs;
     private array $type;
 
-    public function __construct($id, $ietfCiteAs, $type) {
+    public function __construct(string $id, string $ietfCiteAs, array $type) {
         $this->id = $id;
         $this->ietfCiteAs = $ietfCiteAs;
         $this->type = $type;

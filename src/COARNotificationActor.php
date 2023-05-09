@@ -4,13 +4,18 @@ namespace cottagelabs\coarNotifications;
 use JsonSerializable;
 use stdClass;
 
+/**
+ *  This identifies the party or process that initiated the activity.
+ * 
+ *  See: https://notify.coar-repositories.org/patterns/
+ */
 class COARNotificationActor implements JsonSerializable
 {
     private string $id;
     private string $name;
     private string $type;
 
-    public function __construct($id, $name, $type) {
+    public function __construct(string $id, string $name, string $type) {
         $this->id = $id;
         $this->name = $name;
         $this->type = $type;

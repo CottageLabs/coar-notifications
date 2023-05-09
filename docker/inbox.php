@@ -21,7 +21,12 @@ $conn = array('host'     => getenv('MYSQL_HOST'),
     'dbname'   => getenv('MYSQL_DATABASE'),
 );
 
-$coarNotificationManager = new COARNotificationManager($conn, true, $logger);
+$coarNotificationManager = new COARNotificationManager($conn, $logger);
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $coarNotificationManager->getPostResponse();
+}
+
 $notifications = $coarNotificationManager->getNotifications();
 
 ?>

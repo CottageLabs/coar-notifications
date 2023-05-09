@@ -141,10 +141,9 @@ class COARNotification {
     /**
      * @param mixed $inReplyToId
      */
-    public function setInReplyToId($inReplyToId): void
+    public function setInReplyToId(string $inReplyToId): void
     {
-        $this->base->inReplyTo = $inReplyToId;
-        $this->inReplyToId = json_encode($inReplyToId);
+        $this->inReplyToId = $inReplyToId;
     }
 
     /**
@@ -259,6 +258,11 @@ class COARNotification {
     public function getTimestamp()
     {
         return $this->timestamp;
+    }
+
+    public function getInReplyTo(): string
+    {
+        return $this->inReplyToId;
     }
 
 }

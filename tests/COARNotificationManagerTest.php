@@ -4,6 +4,7 @@ use cottagelabs\coarNotifications\COARNotificationActor;
 use cottagelabs\coarNotifications\COARNotificationContext;
 use PHPUnit\Framework\TestCase;
 use cottagelabs\coarNotifications\orm\COARNotification;
+use cottagelabs\coarNotifications\orm\OutboundCOARNotification;
 use cottagelabs\coarNotifications\COARNotificationManager;
 use cottagelabs\coarNotifications\COARNotificationObject;
 use cottagelabs\coarNotifications\COARNotificationTarget;
@@ -15,18 +16,36 @@ use function PHPUnit\Framework\assertInstanceOf;
 use function PHPUnit\Framework\assertNull;
 use function PHPUnit\Framework\assertSame;
 
-
 final class COARNotificationManagerTest extends TestCase
 {
 
+    private ?COARNotificationManager $mnger;
+    private ?COARNotificationActor $actor;
+    private ?COARNotificationObject $obj;
+    private ?COARNotificationContext $ctx;
+    private ?COARNotificationTarget $target;
+    private ?OutboundCOARNotification $outBoundNotification;
+
     public function setUp(): void
     {
-        $this->conn = array('host'     => getenv('MYSQL_HOST'),
+        $conn = array('host'     => getenv('MYSQL_HOST'),
         'driver'   => 'pdo_mysql',
         'user'     => getenv('MYSQL_USER'),
         'password' => getenv('MYSQL_PASSWORD'),
         'dbname'   => getenv('MYSQL_DATABASE'),
       );
+
+      $this->mnger = new COARNotificationManager($conn, null, 'Mocking');
+
+      $url = new COARNotificationURL('urlId', 'urlMediaType', array('urlType'));
+
+      $this->actor = new COARNotificationActor('actorId', 'actorName', 'actorType');
+      $this->obj = new COARNotificationObject('objId', 'citeAs', array('objType'));
+      $this->ctx = new COARNotificationContext('ctxId', 'inbox', array('type'), $url);
+      $this->target = new COARNotificationTarget('targetId', 'targetInbox');
+
+      $this->outBoundNotification = $this->mnger->createOutboundNotification($this->actor, $this->obj, $this->ctx, $this->target);
+
     }
 
     public function testNeedsValidConnection(): void
@@ -50,23 +69,14 @@ final class COARNotificationManagerTest extends TestCase
 
     public function testCreateOutboundNotification(): string 
     {
-        
-        $mnger = new COARNotificationManager($this->conn, null, 'Mocking');
 
-        $actor = new COARNotificationActor('actorId', 'actorName', 'actorType');
-        $obj = new COARNotificationObject('objId', 'citeAs', array('objType'));
-        $ctx = new COARNotificationContext('ctxId', 'inbox', array('type'), new COARNotificationURL('urlId', 'urlMediaType',  array('urlType')));
-        $target = new COARNotificationTarget('targetId', 'targetInbox');
+        $this->mnger->acknowledgeAndAccept($this->outBoundNotification);
 
-        $outBoundNotification = $mnger->createOutboundNotification($actor, $obj, $ctx, $target);
+        assertSame($this->target->getInbox(), $this->outBoundNotification->getTargetURL());
+        assertSame(6, $this->outBoundNotification->getStatus());
+        assertSame('["Accept"]', $this->outBoundNotification->getType());
 
-        $mnger->acknowledgeAndAccept($outBoundNotification);
-
-        assertSame($target->getInbox(), $outBoundNotification->getTargetURL());
-        assertSame(6, $outBoundNotification->getStatus());
-        assertSame('["Accept"]', $outBoundNotification->getType());
-
-        return $outBoundNotification->getId();
+        return $this->outBoundNotification->getId();
 
 
     }
@@ -77,12 +87,10 @@ final class COARNotificationManagerTest extends TestCase
     public function testGetNotification(string $createdId): string
     {
                     
-        $mnger = new COARNotificationManager($this->conn, null, 'Mocking');
-
-        $notification = $mnger->getNotificationById('test');
+        $notification = $this->mnger->getNotificationById('test');
         assertNull($notification);
 
-        $notification = $mnger->getNotificationById($createdId);
+        $notification = $this->mnger->getNotificationById($createdId);
         assertInstanceOf(COARNotification::class, $notification);
 
         return $createdId;
@@ -95,11 +103,92 @@ final class COARNotificationManagerTest extends TestCase
      */
     public function testRemoveNotification(string $createdId): void
     {
-        $mnger = new COARNotificationManager($this->conn, null, 'Mocking');
-        $mnger->removeNotificationById($createdId);
+        $this->mnger->removeNotificationById($createdId);
 
-        $notification = $mnger->getNotificationById($createdId);
+        $notification = $this->mnger->getNotificationById($createdId);
         assertNull($notification);
+    }
+
+    public function testAcknowledgeReject(): void 
+    {
+        $this->mnger->acknowledgeAndReject($this->outBoundNotification);
+
+        assertSame('["Reject"]', $this->outBoundNotification->getType());
+        
+
+    }
+
+    public function testAnnounceIngest(): void 
+    {
+        $this->mnger->announceIngest($this->outBoundNotification);
+
+        assertSame('["Announce","coar-notify:IngestAction"]', $this->outBoundNotification->getType());
+        
+
+    }
+
+    public function testAnnounceEndorsement(): void 
+    {
+        $this->mnger->announceEndorsement($this->outBoundNotification);
+
+        assertSame('["Announce","coar-notify:EndorsementAction"]', $this->outBoundNotification->getType());
+        
+
+    }
+
+    public function testAnnounceRelationship(): void 
+    {
+        $this->mnger->announceRelationship($this->outBoundNotification);
+
+        assertSame('["Announce","coar-notify:RelationshipAction"]', $this->outBoundNotification->getType());
+        
+
+    }
+
+    public function testAnnounceReview(): void 
+    {
+        $this->mnger->announceReview($this->outBoundNotification);
+
+        assertSame('["Announce","coar-notify:ReviewAction"]', $this->outBoundNotification->getType());
+        
+
+    }
+
+    public function testRequestEndorsement(): void 
+    {
+        $this->mnger->requestEndorsement($this->outBoundNotification);
+
+        assertSame('["Offer","coar-notify:EndorsementAction"]', $this->outBoundNotification->getType());
+        
+
+    }
+
+     public function testRequestIngest(): void 
+    {
+        $this->mnger->requestIngest($this->outBoundNotification);
+
+        assertSame('["Offer","coar-notify:IngestAction"]', $this->outBoundNotification->getType());
+        
+
+    }
+
+    public function testRequestReview(): void 
+    {
+        $this->mnger->requestReview($this->outBoundNotification);
+
+        assertSame('["Offer","coar-notify:ReviewAction"]', $this->outBoundNotification->getType());
+        
+
+    }
+
+    public function testRetract(): void 
+    {
+        $this->mnger->retractOffer($this->outBoundNotification, 'urn:uuid:0370c0fb-bb78-4a9b-87f5-bed307a509dd');
+
+        assertSame('["Undo"]', $this->outBoundNotification->getType());
+        assertSame('urn:uuid:0370c0fb-bb78-4a9b-87f5-bed307a509dd', $this->outBoundNotification->getInReplyTo());
+        
+
     }
 
 }

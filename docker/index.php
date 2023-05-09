@@ -29,7 +29,7 @@ $conn = array('host'     => getenv('MYSQL_HOST'),
 $msg = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $coarNotificationManager = new COARNotificationManager($conn, false, $logger);
+    $coarNotificationManager = new COARNotificationManager($conn, $logger);
 
     $actor = new COARNotificationActor($_POST["actor_id"],
         $_POST["actor_name"], $_POST["actor_type"]);
