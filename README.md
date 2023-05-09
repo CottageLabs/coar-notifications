@@ -134,6 +134,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
 }
 ```
 
+Example output:
+```php
+{
+  "@context": "http://www.w3.org/ns/ldp",
+  "@id": "https://overlay-journal.com",
+  "contains": [
+    "https://overlay-journal.com/inbox/b5df022a-fc6c-4679-8246-d288f5690b17"
+  ]
+}
+```
+
 ### Sending
 In order to send notifications you first need to initialize a `$coarNotificationInbox` object.
 This is because outbound notifications are saved to the same database table as described above.
@@ -175,11 +186,13 @@ or
 $coarNotificationManager->announceReview($notification);
 ```
 
-both of which have the optional `$inReplyTo` parameter, or:
+or :
 
 ```php
 $notification->requestReview($notification);
 ```
+
+Note that all of the patterns have the optional `$inReplyTo` parameter to indicate that the step is in response to an earlier step.
 
 ## Development
 A `docker-compose.yml` is including to make experimentation and development easy. It connects

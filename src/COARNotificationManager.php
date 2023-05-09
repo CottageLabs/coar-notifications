@@ -145,19 +145,28 @@ class COARNotificationManager
      * Doctrine supports pagination, see:
      * https://www.doctrine-project.org/projects/doctrine-orm/en/2.6/tutorials/pagination.html
      * 
-     * @param string select columns to select
+     * @param string $direction, 'in', 'out', or default is all
+     * @param string $select columns to select, default is all
      * @return array results of query as an array
      */
     
-    public function getNotifications(string $select='c'): array    {
+    public function getNotifications(string $direction=NULL, string $select='c'): array    {
         $queryBuilder = $this->entityManager->createQueryBuilder();
 
-        $queryBuilder
+        $query = $queryBuilder
             ->select($select)
-            ->from('cottagelabs\coarNotifications\orm\COARNotification', 'c')
-            ->orderBy('c.timestamp', 'DESC')
+            ->from('cottagelabs\coarNotifications\orm\COARNotification', 'c');
+        
+        if($direction == 'in')  {
+            $query->where('c NOT INSTANCE OF cottagelabs\coarNotifications\orm\OutboundCOARNotification');
+        }
+        else if($direction == 'out')    {
+            $query->where('c INSTANCE OF cottagelabs\coarNotifications\orm\OutboundCOARNotification');
+        }
+        
+        $query->orderBy('c.timestamp', 'DESC')
             ->setMaxResults(1000);
-
+    
         return $queryBuilder->getQuery()->getResult();
     }
 
@@ -169,8 +178,8 @@ class COARNotificationManager
      * 
      * @return array an array of UUIDs of notifications
      */
-    public function getNotificationIds(): array {
-        return array_column($this->getNotifications('c.id'), 'id');
+    public function getReceivedNotificationIds(): array {
+        return array_column($this->getNotifications('in', 'c.id'), 'id');
     }
 
     /**
@@ -281,7 +290,7 @@ class COARNotificationManager
 
         $notifications = array('@context' => 'http://www.w3.org/ns/ldp',
             '@id' => $this->id,
-            'contains' => array_map(fn($id): string => $this->inbox_url . '/' . substr($id, 9), $this->getNotificationIds()));
+            'contains' => array_map(fn($id): string => $this->inbox_url . '/' . substr($id, 9), $this->getReceivedNotificationIds()));
 
         return json_encode($notifications);
 
