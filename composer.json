@@ -6,6 +6,10 @@
     {
       "name": "Hrafn Malmquist",
       "email": "hrafn@cottagelabs.com"
+    },
+    {
+      "name": "Raphaël Tournoy",
+      "email": "raphael.tournoy@ccsd.cnrs.fr"
     }
   ],
   "license": "MIT",
