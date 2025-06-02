@@ -1,6 +1,6 @@
 {
   "name": "cottagelabs/coar-notifications",
-  "description": "A COAR Notification manager that can send and receive COAR Notifications.",
+  "description": "A library and server-side implementation supporting a limited number of the COAR Notify pattern objects.  Server-side implementation assumes MySQL.  If you are looking for a full, generic implementation of the COAR Notify protocol see https://packagist.org/packages/cottagelabs/coarnotify",
   "type": "library",
   "authors": [
     {
